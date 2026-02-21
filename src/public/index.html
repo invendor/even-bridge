@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Even Bridge → Telegram</title>
+  <style>
+    :root {
+      /* Text colors */
+      --tc-highlight: #ffffff;
+      --tc-highlight-pressed: #e6e6e6;
+      --tc-1: #232323;
+      --tc-2: #7b7b7b;
+      --tc-accent: #232323;
+      --tc-red: #ff453a;
+      --tc-red-muted: #ff8f87;
+      --tc-green: #4bb956;
+
+      /* Background colors */
+      --bc-highlight: #232323;
+      --bc-1: #ffffff;
+      --bc-2: #f6f6f6;
+      --bc-3: #eeeeee;
+      --bc-4: #e4e4e4;
+      --bc-accent: #fef991;
+      --bc-accent-pressed: #f2e47a;
+      --bc-accent-muted: #fff7c2;
+
+      /* Shaded colors */
+      --sc-1: rgba(0, 0, 0, 0.5);
+      --sc-2: rgba(35, 35, 35, 0.08);
+
+      /* Font */
+      --font-family-sans: "FK Grotesk Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+      /* Spacing */
+      --spacing-8: 8px;
+      --spacing-12: 12px;
+      --spacing-16: 16px;
+      --spacing-20: 20px;
+      --spacing-24: 24px;
+
+      /* Layout */
+      --layout-page: 12px;
+      --layout-section: 8px;
+      --layout-card: 16px;
+
+      /* Radius */
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-family-sans);
+      letter-spacing: -0.03em;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: var(--layout-page);
+      padding-top: max(var(--layout-page), env(safe-area-inset-top));
+      padding-bottom: max(var(--layout-page), env(safe-area-inset-bottom));
+      background: var(--bc-3);
+      color: var(--tc-1);
+      line-height: normal;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 400;
+      color: var(--tc-1);
+      padding: var(--spacing-16) 0 var(--spacing-12);
+    }
+
+    /* Status bar */
+    #status {
+      margin-bottom: var(--layout-section);
+      padding: var(--spacing-12) var(--spacing-16);
+      background: var(--bc-1);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--tc-2);
+      text-align: center;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #status.error { color: var(--tc-red); }
+    #status.result { color: var(--tc-green); }
+
+    /* Contact list */
+    #contactList {
+      display: none;
+    }
+    #contactList button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: var(--spacing-12) var(--spacing-16);
+      margin-bottom: var(--layout-section);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      background: var(--bc-1);
+      color: var(--tc-1);
+      font-family: var(--font-family-sans);
+      font-size: 17px;
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #contactList button:active { background: var(--bc-3); }
+    #contactList button .type {
+      color: var(--tc-2);
+      font-size: 13px;
+      font-weight: 400;
+      flex-shrink: 0;
+      margin-left: var(--spacing-8);
+    }
+
+    /* Conversation view */
+    #conversationView {
+      display: none;
+    }
+    .conv-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-12) 0;
+    }
+    .conv-header .name {
+      color: var(--tc-1);
+      font-weight: 400;
+      font-size: 20px;
+    }
+    .conv-header .back {
+      color: var(--tc-2);
+      cursor: pointer;
+      font-family: var(--font-family-sans);
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      padding: 6px var(--spacing-12);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      background: var(--bc-1);
+      transition: background 0.15s;
+    }
+    .conv-header .back:active { background: var(--bc-3); }
+
+    /* Messages */
+    .conv-messages {
+      margin-bottom: var(--spacing-12);
+      display: flex;
+      flex-direction: column;
+      gap: var(--layout-section);
+    }
+    .conv-msg {
+      padding: var(--spacing-8) var(--spacing-12);
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 300;
+      max-width: 85%;
+      border: 1px solid var(--bc-4);
+    }
+    .conv-msg.out {
+      background: var(--bc-accent-muted);
+      border-color: var(--bc-accent-pressed);
+      margin-left: auto;
+      text-align: right;
+    }
+    .conv-msg.in {
+      background: var(--bc-1);
+      text-align: left;
+    }
+    .conv-msg .sender {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--tc-2);
+      margin-bottom: 2px;
+    }
+    .conv-msg .time {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--tc-2);
+      margin-top: 2px;
+    }
+    .conv-msg .text {
+      word-break: break-word;
+      color: var(--tc-1);
+    }
+
+    /* Record button — primary variant */
+    #recordBtn {
+      width: 100%;
+      padding: var(--spacing-16);
+      font-family: var(--font-family-sans);
+      font-size: 17px;
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      background: var(--bc-highlight);
+      color: var(--tc-highlight);
+      transition: background 0.15s;
+      display: none;
+    }
+    #recordBtn:active { background: var(--tc-1); }
+    #recordBtn.recording {
+      background: var(--tc-red);
+      color: var(--tc-highlight);
+    }
+    #recordBtn.recording:active { background: var(--tc-red-muted); }
+    #recordBtn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Preview view */
+    #previewView {
+      display: none;
+    }
+    .preview-label {
+      color: var(--tc-2);
+      font-size: 13px;
+      font-weight: 400;
+      margin-bottom: var(--spacing-8);
+    }
+    .preview-text {
+      font-size: 17px;
+      font-weight: 300;
+      color: var(--tc-1);
+      padding: var(--spacing-12) var(--spacing-16);
+      background: var(--bc-1);
+      border: 1px solid var(--bc-4);
+      border-left: 3px solid var(--bc-accent);
+      border-radius: var(--radius);
+      margin-bottom: var(--spacing-12);
+      word-break: break-word;
+    }
+    .preview-actions {
+      display: flex;
+      gap: var(--spacing-8);
+    }
+    .preview-actions button {
+      flex: 1;
+      padding: var(--spacing-12);
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-family-sans);
+      font-size: 17px;
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .send-btn {
+      background: var(--bc-accent);
+      color: var(--tc-accent);
+    }
+    .send-btn:active { background: var(--bc-accent-pressed); }
+    .cancel-btn {
+      background: var(--bc-1);
+      color: var(--tc-1);
+      border: 1px solid var(--bc-4) !important;
+    }
+    .cancel-btn:active { background: var(--bc-3); }
+
+    /* History */
+    #history {
+      margin-top: var(--spacing-20);
+    }
+    #history h2 {
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--tc-2);
+      margin-bottom: var(--spacing-8);
+    }
+    .history-item {
+      padding: var(--spacing-12) var(--spacing-16);
+      background: var(--bc-1);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      margin-bottom: var(--layout-section);
+      font-size: 15px;
+      font-weight: 300;
+    }
+    .history-item .time {
+      color: var(--tc-2);
+      font-size: 11px;
+      font-weight: 400;
+      margin-bottom: 4px;
+    }
+    .history-item .text {
+      color: var(--tc-1);
+    }
+
+    /* Debug log */
+    #log {
+      margin-top: var(--spacing-20);
+      padding: var(--spacing-12);
+      background: var(--bc-2);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      font-size: 11px;
+      font-weight: 400;
+      max-height: 150px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      color: var(--tc-2);
+    }
+    .result { color: var(--tc-green); }
+    .error { color: var(--tc-red); }
+  </style>
+</head>
+<body>
+  <h1>Even Bridge → Telegram</h1>
+  <div id="status">Initializing...</div>
+  <div id="contactList"></div>
+  <div id="conversationView">
+    <div class="conv-header">
+      <span class="name"></span>
+      <span class="back">Back</span>
+    </div>
+    <div class="conv-messages"></div>
+    <button id="recordBtn" disabled>Tap to Record</button>
+  </div>
+  <div id="previewView">
+    <div class="preview-label">Preview:</div>
+    <div class="preview-text"></div>
+    <div class="preview-actions">
+      <button class="send-btn">Send</button>
+      <button class="cancel-btn">Cancel</button>
+    </div>
+  </div>
+  <div id="history"></div>
+  <div id="log"></div>
+
+  <script type="module">
+    const statusEl = document.getElementById("status");
+    const contactListEl = document.getElementById("contactList");
+    const conversationViewEl = document.getElementById("conversationView");
+    const previewViewEl = document.getElementById("previewView");
+    const recordBtn = document.getElementById("recordBtn");
+    const historyEl = document.getElementById("history");
+    const logEl = document.getElementById("log");
+
+    let ws = null;
+    let isRecording = false;
+    let bridge = null;
+    let isG2 = false;
+
+    // App state: "startup" | "contacts" | "conversation" | "recording" | "processing" | "preview"
+    let appState = "startup";
+    let contacts = [];
+    let selectedContact = null;
+    let conversationMessages = [];
+    let pendingText = "";
+
+    let audioContext = null;
+    let scriptProcessor = null;
+    let mediaStream = null;
+    let logoData = null;
+    let startupShown = false;
+    let conversationPollTimer = null;
+    let wakeLock = null;
+    // Global abort controller — aborted when page goes hidden to kill stuck fetches
+    let pageAbort = new AbortController();
+
+    async function requestWakeLock() {
+      if (wakeLock) return;
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLock = await navigator.wakeLock.request("screen");
+          wakeLock.addEventListener("release", () => {
+            wakeLock = null;
+          });
+          log("Wake lock acquired");
+        }
+      } catch (e) {
+        log("Wake lock failed: " + e.message);
+      }
+    }
+
+    // When page goes hidden (lock screen, app switch), abort all in-flight fetches
+    // so awaiting functions fall into catch and don't block. On resume, retry cleanly.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        pageAbort.abort();
+        log("Page hidden — aborted in-flight fetches");
+      } else if (document.visibilityState === "visible") {
+        pageAbort = new AbortController();
+        requestWakeLock();
+        // Retry if we were in a loading state when the page was suspended
+        const status = statusEl.textContent;
+        if (status.startsWith("Loading contacts") || status === "Initializing...") {
+          log("Resuming from lock — retrying contacts");
+          goToContacts();
+        } else if (status.startsWith("Loading conversation") && selectedContact) {
+          log("Resuming from lock — retrying conversation");
+          goToConversation(selectedContact);
+        }
+      }
+    });
+
+    // --- LocalStorage history ---
+    function getHistory() {
+      try {
+        return JSON.parse(localStorage.getItem("g2_messages") || "[]");
+      } catch { return []; }
+    }
+
+    function saveMessage(text, contactName) {
+      const history = getHistory();
+      const entry = {
+        text,
+        contact: contactName,
+        timestamp: new Date().toISOString(),
+      };
+      history.unshift(entry);
+      if (history.length > 100) history.length = 100;
+      localStorage.setItem("g2_messages", JSON.stringify(history));
+      return entry;
+    }
+
+    function formatDateTime(isoString) {
+      const d = new Date(isoString);
+      const date = d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+      const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+      return `${date} ${time}`;
+    }
+
+    function formatTime(unixTimestamp) {
+      const d = new Date(unixTimestamp * 1000);
+      return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function renderHistory() {
+      const history = getHistory();
+      if (history.length === 0) {
+        historyEl.innerHTML = "";
+        return;
+      }
+      let html = "<h2>History</h2>";
+      for (const item of history.slice(0, 20)) {
+        const contactLabel = item.contact ? ` → ${item.contact}` : "";
+        html += `<div class="history-item">
+          <div class="time">${formatDateTime(item.timestamp)}${contactLabel}</div>
+          <div class="text">${item.text}</div>
+        </div>`;
+      }
+      historyEl.innerHTML = html;
+    }
+
+    function log(msg) {
+      const time = new Date().toLocaleTimeString();
+      logEl.textContent += `[${time}] ${msg}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setStatus(text, className) {
+      statusEl.textContent = text;
+      statusEl.className = className || "";
+    }
+
+    // --- API calls ---
+    function fetchWithTimeout(url, timeoutMs = 10000) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      // Also abort if the page goes hidden (pageAbort fires)
+      const onPageAbort = () => controller.abort();
+      pageAbort.signal.addEventListener("abort", onPageAbort);
+      return fetch(url, { signal: controller.signal }).finally(() => {
+        clearTimeout(timer);
+        pageAbort.signal.removeEventListener("abort", onPageAbort);
+      });
+    }
+
+    async function fetchContacts() {
+      const resp = await fetchWithTimeout("/api/contacts");
+      if (!resp.ok) throw new Error("Failed to fetch contacts");
+      return await resp.json();
+    }
+
+    async function fetchLastRecipient() {
+      try {
+        const resp = await fetchWithTimeout("/api/last-recipient");
+        if (!resp.ok) return null;
+        return await resp.json();
+      } catch { return null; }
+    }
+
+    async function fetchMessages(entityId) {
+      const resp = await fetchWithTimeout(`/api/messages/${encodeURIComponent(entityId)}`);
+      if (!resp.ok) throw new Error("Failed to fetch messages");
+      return await resp.json();
+    }
+
+    // --- Load logo data ---
+    async function loadLogoData() {
+      try {
+        const resp = await fetch("/logo-data.json");
+        logoData = await resp.json();
+        log(`Logo loaded: ${logoData.width}x${logoData.height}`);
+      } catch (e) {
+        log("Logo load failed: " + e.message);
+      }
+    }
+
+    // --- G2 Startup screen with logo ---
+    async function showStartupScreen() {
+      if (!bridge || !logoData) return;
+      try {
+        const imgX = Math.floor((576 - logoData.width) / 2);
+        const textLabel = "Tap to start";
+        const textHeight = 30;
+        const totalHeight = logoData.height + 10 + textHeight;
+        const imgY = Math.floor((288 - totalHeight) / 2);
+        const textY = imgY + logoData.height + 10;
+        const rowWidth = textLabel.length * 9;
+        const rowX = Math.floor((576 - rowWidth) / 2);
+
+        bridge.createStartUpPageContainer({
+          containerTotalNum: 3,
+          textObject: [
+            {
+              containerID: 1,
+              containerName: "evt",
+              xPosition: 0,
+              yPosition: 0,
+              width: 576,
+              height: 288,
+              isEventCapture: 1,
+              borderWidth: 0,
+              borderColor: 0,
+              borderRdaius: 0,
+              paddingLength: 0,
+              content: " ",
+            },
+            {
+              containerID: 3,
+              containerName: "label",
+              xPosition: rowX,
+              yPosition: textY,
+              width: 350,
+              height: 40,
+              isEventCapture: 0,
+              borderWidth: 0,
+              borderColor: 0,
+              borderRdaius: 0,
+              paddingLength: 0,
+              content: textLabel,
+            },
+          ],
+          imageObject: [
+            {
+              containerID: 2,
+              containerName: "logo",
+              xPosition: imgX,
+              yPosition: imgY,
+              width: logoData.width,
+              height: logoData.height,
+            },
+          ],
+        });
+
+        await bridge.updateImageRawData({
+          containerID: 2,
+          containerName: "logo",
+          imageData: logoData.data,
+        });
+
+        startupShown = true;
+        log("Startup screen displayed");
+      } catch (e) {
+        log("Startup screen error: " + e.message);
+        bridge.createStartUpPageContainer({
+          containerTotalNum: 1,
+          textObject: [
+            {
+              containerID: 1,
+              containerName: "main",
+              xPosition: 0,
+              yPosition: 0,
+              width: 576,
+              height: 288,
+              isEventCapture: 1,
+              borderWidth: 0,
+              borderColor: 0,
+              borderRdaius: 0,
+              paddingLength: 16,
+              content: "Tap to start",
+            },
+          ],
+        });
+        startupShown = true;
+      }
+    }
+
+    // --- G2 Contact list display ---
+    function showGlassesContactList() {
+      if (!bridge || contacts.length === 0) return;
+      try {
+        const names = contacts.slice(0, 20).map((c) => c.name);
+        bridge.rebuildPageContainer({
+          containerTotalNum: 1,
+          listObject: [
+            {
+              containerID: 1,
+              containerName: "contacts",
+              xPosition: 0,
+              yPosition: 0,
+              width: 576,
+              height: 288,
+              isEventCapture: 1,
+              borderWidth: 1,
+              borderColor: 13,
+              borderRdaius: 6,
+              paddingLength: 5,
+              itemContainer: {
+                itemCount: names.length,
+                itemWidth: 560,
+                isItemSelectBorderEn: 1,
+                itemName: names,
+              },
+            },
+          ],
+        });
+        log("Contact list displayed on glasses");
+      } catch (e) {
+        log("Contact list display error: " + e.message);
+      }
+    }
+
+    // --- G2 Display helpers ---
+    let displayRebuilt = false;
+
+    function rebuildGlassesDisplay(text, centered = false) {
+      if (!bridge) return;
+      try {
+        if (!displayRebuilt) {
+          // For centered text, position the container like the startup screen:
+          // calculate X from text width (charWidth ~9px) and Y to vertically center
+          const charWidth = 9;
+          const cH = centered ? 40 : 288;
+          const rowWidth = centered ? text.length * charWidth : 576;
+          const x = centered ? Math.floor((576 - rowWidth) / 2) : 0;
+          const y = centered ? Math.floor((288 - cH) / 2) : 0;
+          const w = centered ? Math.max(rowWidth, 200) : 576;
+          bridge.rebuildPageContainer({
+            containerTotalNum: 1,
+            textObject: [
+              {
+                containerID: 1,
+                containerName: "main",
+                xPosition: x,
+                yPosition: y,
+                width: w,
+                height: cH,
+                isEventCapture: 1,
+                borderWidth: 0,
+                borderColor: 0,
+                borderRdaius: 0,
+                paddingLength: centered ? 0 : 16,
+                content: text,
+              },
+            ],
+          });
+          displayRebuilt = true;
+        } else {
+          bridge.textContainerUpgrade({
+            containerID: 1,
+            containerName: "main",
+            content: text,
+          });
+        }
+        log("Display updated: " + text.slice(0, 40));
+      } catch (e) {
+        log("Display error: " + e.message);
+      }
+    }
+
+    // --- G2 Conversation display ---
+    function showGlassesConversation(forceRebuild = false) {
+      if (!bridge) return;
+      try {
+        let lines = [`To: ${selectedContact.name}`, String.fromCharCode(9472).repeat(20)];
+
+        const msgs = [...conversationMessages].reverse();
+        for (const m of msgs) {
+          const sender = m.out ? "Me" : (m.senderName || selectedContact.name);
+          const time = formatTime(m.date);
+          const text = (m.text || "").slice(0, 50);
+          lines.push(`${sender} (${time}): ${text}`);
+        }
+
+        if (msgs.length === 0) {
+          lines.push("No messages yet");
+        }
+
+        lines.push(String.fromCharCode(9472).repeat(20));
+        lines.push("Double tap to record | Swipe to go back");
+
+        if (forceRebuild) displayRebuilt = false;
+        rebuildGlassesDisplay(lines.join("\n"));
+        log("Conversation displayed on glasses");
+      } catch (e) {
+        log("Conversation display error: " + e.message);
+      }
+    }
+
+    // --- G2 Preview display ---
+    function showGlassesPreview(text) {
+      if (!bridge) return;
+      try {
+        const preview = text.length > 200 ? text.slice(0, 200) + "..." : text;
+        const lines = [
+          "Preview:",
+          "",
+          `"${preview}"`,
+          "",
+          "Tap to send | Swipe to cancel",
+        ];
+        // Force rebuild since we're coming from recording/processing state
+        displayRebuilt = false;
+        rebuildGlassesDisplay(lines.join("\n"));
+        log("Preview displayed on glasses");
+      } catch (e) {
+        log("Preview display error: " + e.message);
+      }
+    }
+
+    // --- Browser UI: Contacts ---
+    function showBrowserContacts() {
+      if (contacts.length === 0) {
+        contactListEl.innerHTML = "<p style='color:var(--tc-2); padding:var(--spacing-16); text-align:center'>No pinned contacts found</p>";
+        contactListEl.style.display = "block";
+        return;
+      }
+      let html = "";
+      for (const c of contacts) {
+        const typeLabel = c.isGroup ? "group" : c.isChannel ? "channel" : "user";
+        html += `<button data-id="${c.id}" data-name="${c.name}" data-username="${c.username || ""}">
+          ${c.name}<span class="type">${typeLabel}</span>
+        </button>`;
+      }
+      contactListEl.innerHTML = html;
+      contactListEl.style.display = "block";
+
+      contactListEl.querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const contact = {
+            id: btn.dataset.id,
+            name: btn.dataset.name,
+            username: btn.dataset.username,
+          };
+          goToConversation(contact);
+        });
+      });
+    }
+
+    function hideBrowserContacts() {
+      contactListEl.style.display = "none";
+    }
+
+    // --- Browser UI: Conversation ---
+    function showBrowserConversation() {
+      if (!selectedContact) return;
+      conversationViewEl.querySelector(".conv-header .name").textContent = selectedContact.name;
+
+      const msgsEl = conversationViewEl.querySelector(".conv-messages");
+      const msgs = [...conversationMessages].reverse();
+
+      if (msgs.length === 0) {
+        msgsEl.innerHTML = '<div style="color:var(--tc-2); text-align:center; padding:var(--spacing-20)">No messages yet</div>';
+      } else {
+        let html = "";
+        for (const m of msgs) {
+          const cls = m.out ? "out" : "in";
+          const sender = m.out ? "Me" : (m.senderName || selectedContact.name);
+          const text = m.text || "";
+          const time = formatTime(m.date);
+          html += `<div class="conv-msg ${cls}">
+            <div class="sender">${sender}</div>
+            <div class="text">${text}</div>
+            <div class="time">${time}</div>
+          </div>`;
+        }
+        msgsEl.innerHTML = html;
+      }
+
+      recordBtn.style.display = "block";
+      recordBtn.disabled = false;
+      recordBtn.textContent = "Tap to Record";
+      recordBtn.classList.remove("recording");
+      conversationViewEl.style.display = "block";
+    }
+
+    function hideBrowserConversation() {
+      conversationViewEl.style.display = "none";
+      recordBtn.style.display = "none";
+    }
+
+    // --- Conversation auto-refresh ---
+    function startConversationPolling() {
+      stopConversationPolling();
+      conversationPollTimer = setInterval(async () => {
+        if (appState !== "conversation" || !selectedContact) {
+          stopConversationPolling();
+          return;
+        }
+        try {
+          const entityId = selectedContact.username || selectedContact.id;
+          const msgs = await fetchMessages(entityId);
+          if (appState !== "conversation") return;
+          conversationMessages = msgs;
+          if (isG2) showGlassesConversation();
+          showBrowserConversation();
+        } catch {}
+      }, 5000);
+    }
+
+    function stopConversationPolling() {
+      if (conversationPollTimer) {
+        clearInterval(conversationPollTimer);
+        conversationPollTimer = null;
+      }
+    }
+
+    // --- Browser UI: Preview ---
+    function showBrowserPreview(text) {
+      previewViewEl.querySelector(".preview-text").textContent = text;
+      previewViewEl.style.display = "block";
+    }
+
+    function hideBrowserPreview() {
+      previewViewEl.style.display = "none";
+    }
+
+    // --- State transitions ---
+    async function goToContacts() {
+      appState = "contacts";
+      selectedContact = null;
+      conversationMessages = [];
+      pendingText = "";
+      displayRebuilt = false;
+      contacts = [];
+      stopConversationPolling();
+      requestWakeLock();
+
+      hideBrowserConversation();
+      hideBrowserPreview();
+
+      setStatus("Loading contacts...");
+      rebuildGlassesDisplay("Loading contacts...", true);
+
+      try {
+        const [fetchedContacts, lastRecipient] = await Promise.all([
+          fetchContacts(),
+          fetchLastRecipient(),
+        ]);
+        contacts = fetchedContacts;
+        log(`Loaded ${contacts.length} pinned contacts`);
+
+        if (lastRecipient && lastRecipient.id) {
+          const idx = contacts.findIndex((c) => c.id === lastRecipient.id);
+          if (idx > 0) {
+            const [contact] = contacts.splice(idx, 1);
+            contacts.unshift(contact);
+            log(`Last recipient "${lastRecipient.name}" moved to top`);
+          } else if (idx === -1) {
+            contacts.unshift(lastRecipient);
+            log(`Last recipient "${lastRecipient.name}" added to top`);
+          }
+        }
+      } catch (e) {
+        log("Error loading contacts: " + e.message);
+        setStatus("Error loading contacts", "error");
+        rebuildGlassesDisplay("Error loading contacts");
+        return;
+      }
+
+      if (contacts.length === 0) {
+        setStatus("No pinned contacts found", "error");
+        rebuildGlassesDisplay("No pinned contacts.\nPin some chats in Telegram.");
+        showBrowserContacts();
+        return;
+      }
+
+      setStatus("Select a contact");
+
+      if (isG2) {
+        showGlassesContactList();
+      }
+      showBrowserContacts();
+    }
+
+    async function goToConversation(contact) {
+      selectedContact = contact;
+      appState = "conversation";
+      log(`Selected contact: ${contact.name}`);
+      requestWakeLock();
+
+      hideBrowserContacts();
+      hideBrowserPreview();
+
+      setStatus(`Loading conversation with ${contact.name}...`);
+      // Force full rebuild — switching from LIST container to TEXT container
+      displayRebuilt = false;
+      rebuildGlassesDisplay(`Loading conversation...`, true);
+
+      try {
+        const entityId = contact.username || contact.id;
+        conversationMessages = await fetchMessages(entityId);
+        log(`Loaded ${conversationMessages.length} messages`);
+      } catch (e) {
+        log("Error loading messages: " + e.message);
+        conversationMessages = [];
+      }
+
+      setStatus(`Conversation with ${contact.name}`);
+
+      if (isG2) {
+        // Force rebuild — switching from centered loading text to full-size conversation
+        showGlassesConversation(true);
+      }
+      showBrowserConversation();
+      startConversationPolling();
+    }
+
+    async function refreshConversation() {
+      if (!selectedContact) return;
+      try {
+        const entityId = selectedContact.username || selectedContact.id;
+        conversationMessages = await fetchMessages(entityId);
+        log(`Refreshed conversation: ${conversationMessages.length} messages`);
+      } catch (e) {
+        log("Error refreshing messages: " + e.message);
+      }
+
+      appState = "conversation";
+      setStatus(`Conversation with ${selectedContact.name}`);
+
+      if (isG2) {
+        showGlassesConversation();
+      }
+      showBrowserConversation();
+      hideBrowserPreview();
+      startConversationPolling();
+    }
+
+    function sendPendingMessage() {
+      if (!pendingText || !selectedContact) return;
+
+      appState = "processing";
+      setStatus("Sending...");
+      if (isG2) {
+        displayRebuilt = false;
+        rebuildGlassesDisplay("Sending...");
+      }
+
+      const recipient = selectedContact.username || selectedContact.id;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: "send",
+          text: pendingText,
+          recipient,
+          recipientId: selectedContact.id,
+          recipientName: selectedContact.name,
+          recipientUsername: selectedContact.username,
+        }));
+      }
+    }
+
+    async function cancelPreview() {
+      log("Preview cancelled");
+      pendingText = "";
+      hideBrowserPreview();
+      await refreshConversation();
+    }
+
+    // --- WebSocket ---
+    function connectWebSocket() {
+      const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+      ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+      ws.onopen = () => {
+        log("WebSocket connected");
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === "status") {
+          setStatus(msg.text);
+          if (isG2 && displayRebuilt) {
+            rebuildGlassesDisplay(msg.text);
+          }
+          log("Status: " + msg.text);
+        } else if (msg.type === "preview") {
+          pendingText = msg.text;
+          appState = "preview";
+          setStatus("Preview — tap to send, swipe to cancel");
+          log(`Preview: ${msg.text}`);
+
+          if (isG2) {
+            showGlassesPreview(msg.text);
+          }
+
+          recordBtn.style.display = "none";
+          showBrowserPreview(msg.text);
+        } else if (msg.type === "sent") {
+          const contactName = selectedContact?.name || "Unknown";
+          saveMessage(msg.text, contactName);
+          renderHistory();
+          log(`Sent to ${contactName}: ${msg.text}`);
+          pendingText = "";
+          refreshConversation();
+        } else if (msg.type === "error") {
+          setStatus(msg.text, "error");
+          log("Error: " + msg.text);
+
+          if (isG2) {
+            displayRebuilt = false;
+            rebuildGlassesDisplay("Error:\n" + msg.text);
+          }
+
+          setTimeout(() => {
+            if (selectedContact) {
+              refreshConversation();
+            } else {
+              goToContacts();
+            }
+          }, 3000);
+        }
+      };
+
+      ws.onclose = () => {
+        log("WebSocket disconnected, reconnecting...");
+        setTimeout(connectWebSocket, 2000);
+      };
+    }
+
+    // --- Recording: G2 mode ---
+    function startRecordingG2() {
+      bridge.audioControl(true);
+      log("G2 microphone opened");
+    }
+
+    function stopRecordingG2() {
+      bridge.audioControl(false);
+      log("G2 microphone closed");
+    }
+
+    // --- Recording: Browser fallback mode ---
+    async function startRecordingBrowser() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        log("Browser mic not available (no mediaDevices API)");
+        setStatus("Mic not available", "error");
+        isRecording = false;
+        recordBtn.textContent = "Tap to Record";
+        recordBtn.classList.remove("recording");
+        return;
+      }
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            sampleRate: 16000,
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+          },
+        });
+
+        audioContext = new AudioContext({ sampleRate: 16000 });
+        const source = audioContext.createMediaStreamSource(mediaStream);
+
+        scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+        scriptProcessor.onaudioprocess = (e) => {
+          if (!isRecording || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+          const float32 = e.inputBuffer.getChannelData(0);
+          const int16 = new Int16Array(float32.length);
+          for (let i = 0; i < float32.length; i++) {
+            const s = Math.max(-1, Math.min(1, float32[i]));
+            int16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+          }
+          ws.send(int16.buffer);
+        };
+
+        source.connect(scriptProcessor);
+        scriptProcessor.connect(audioContext.destination);
+        log("Browser microphone opened");
+      } catch (err) {
+        log("Mic error: " + err.message);
+        throw err;
+      }
+    }
+
+    function stopRecordingBrowser() {
+      if (scriptProcessor) {
+        scriptProcessor.disconnect();
+        scriptProcessor = null;
+      }
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((t) => t.stop());
+        mediaStream = null;
+      }
+      log("Browser microphone closed");
+    }
+
+    // --- Toggle recording ---
+    async function toggleRecording() {
+      if (!selectedContact) {
+        log("No contact selected, ignoring tap");
+        return;
+      }
+      requestWakeLock();
+
+      if (!isRecording) {
+        isRecording = true;
+        appState = "recording";
+        stopConversationPolling();
+        recordBtn.textContent = "Stop Recording";
+        recordBtn.classList.add("recording");
+        setStatus(`Recording for ${selectedContact.name}...`);
+
+        if (isG2) {
+          displayRebuilt = false;
+          rebuildGlassesDisplay("Recording...\n\nTap to stop");
+        }
+
+        if (isG2) {
+          startRecordingG2();
+        } else {
+          await startRecordingBrowser();
+        }
+      } else {
+        isRecording = false;
+        appState = "processing";
+        recordBtn.disabled = true;
+        recordBtn.textContent = "Processing...";
+        recordBtn.classList.remove("recording");
+        setStatus("Processing...");
+
+        if (isG2) {
+          rebuildGlassesDisplay("Processing...");
+        }
+
+        if (isG2) {
+          stopRecordingG2();
+        } else {
+          stopRecordingBrowser();
+        }
+
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "stop" }));
+        }
+      }
+    }
+
+    // --- Initialize ---
+    async function init() {
+      // Try to detect G2 bridge
+      try {
+        const sdk = await import(
+          "https://cdn.jsdelivr.net/npm/@evenrealities/even_hub_sdk@latest/dist/index.js"
+        );
+        bridge = await Promise.race([
+          sdk.waitForEvenAppBridge(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("timeout")), 2000)
+          ),
+        ]);
+        isG2 = true;
+        log("G2 bridge detected (SDK)");
+      } catch {
+        if (typeof window.EvenAppBridge?.getInstance === "function") {
+          bridge = window.EvenAppBridge.getInstance();
+          isG2 = true;
+          log("G2 bridge detected (raw)");
+        }
+      }
+
+      if (isG2) {
+        log("Running in G2 glasses mode");
+
+        await loadLogoData();
+        await showStartupScreen();
+
+        // Listen for G2 events
+        bridge.onEvenHubEvent((event) => {
+          // Handle audio streaming during recording
+          if (event.audioEvent?.audioPcm && isRecording) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(event.audioEvent.audioPcm);
+            }
+            return;
+          }
+
+          // Handle list events (contact selection)
+          if (event.listEvent) {
+            const { currentSelectItemIndex, eventType } = event.listEvent;
+            if (eventType === 0 || eventType === undefined) {
+              if (appState === "contacts") {
+                const idx = currentSelectItemIndex ?? 0;
+                const contact = contacts[idx];
+                if (contact) {
+                  goToConversation(contact);
+                }
+              }
+            }
+            return;
+          }
+
+          // Log all non-audio events for debugging
+          if (!event.audioEvent) {
+            log("G2 event: " + JSON.stringify(Object.keys(event)) + " state=" + appState);
+            const ev2 = event.textEvent || event.sysEvent;
+            if (ev2) log("  eventType=" + ev2.eventType);
+          }
+
+          // Handle text/sys events (taps, double taps, scrolls)
+          const ev = event.textEvent || event.sysEvent;
+          if (!ev) return;
+
+          const eventType = ev.eventType;
+
+          // Single tap (0 or undefined)
+          if (eventType === 0 || eventType === undefined) {
+            if (appState === "startup") {
+              goToContacts();
+            } else if (appState === "recording") {
+              toggleRecording();
+            } else if (appState === "preview") {
+              sendPendingMessage();
+            }
+          }
+          // Double tap (3)
+          else if (eventType === 3) {
+            if (appState === "conversation") {
+              toggleRecording();
+            }
+          }
+          // Scroll up (1) or scroll down (2)
+          else if (eventType === 1 || eventType === 2) {
+            if (appState === "conversation") {
+              goToContacts();
+            } else if (appState === "preview") {
+              cancelPreview();
+            }
+          }
+        });
+      } else {
+        log("Running in browser fallback mode (no G2 detected)");
+      }
+
+      connectWebSocket();
+      renderHistory();
+      requestWakeLock();
+
+      // Browser: go straight to contacts
+      if (!isG2) {
+        goToContacts();
+      } else {
+        setStatus("Tap to start");
+      }
+
+      // Browser: Back button
+      conversationViewEl.querySelector(".back").addEventListener("click", () => {
+        goToContacts();
+      });
+
+      // Browser: Record button
+      recordBtn.addEventListener("click", toggleRecording);
+
+      // Browser: Send/Cancel buttons
+      previewViewEl.querySelector(".send-btn").addEventListener("click", sendPendingMessage);
+      previewViewEl.querySelector(".cancel-btn").addEventListener("click", cancelPreview);
+    }
+
+    init().catch((err) => {
+      log("Init error: " + err.message);
+      setStatus("Error: " + err.message, "error");
+    });
+  </script>
+</body>
+</html>

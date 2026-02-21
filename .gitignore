@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+telegram-session.txt
+last-recipient.json
+.claude
+qr.png
