@@ -710,6 +710,7 @@
         const logoX = Math.floor((576 - logoW) / 2);
         const textX = Math.floor((576 - totalRowWidth) / 2);
         const iconX = textX + textWidth + iconGap;
+        const iconYOffset = Math.floor((rowHeight - iconSize) / 2);
 
         const imageObjects = [];
         const containerCount = 1 + (logoData ? 1 : 0) + availableMessengers.length;
@@ -726,14 +727,16 @@
           });
         }
 
-        // Messenger icon images — to the right of text
+        // Messenger icon images — to the right of text, per-icon Y tweak
+        const iconYTweak = { telegram: -4, slack: 9 };
         availableMessengers.forEach((name, i) => {
           if (messengerIconData[name]) {
+            const tweak = iconYTweak[name] || 0;
             imageObjects.push({
               containerID: 3 + i,
               containerName: `ic${i}`,
               xPosition: iconX,
-              yPosition: selectY + i * rowHeight,
+              yPosition: selectY + i * rowHeight + iconYOffset + tweak,
               width: iconSize,
               height: iconSize,
             });
@@ -787,18 +790,6 @@
       }
     }
 
-    function updateGlassesMessengerSelection() {
-      if (!bridge) return;
-      try {
-        bridge.textContainerUpgrade({
-          containerID: 1,
-          containerName: "select",
-          content: getMessengerSelectText(),
-        });
-      } catch (e) {
-        log("Selection update error: " + e.message);
-      }
-    }
 
     function showGlassesContactList() {
       if (!bridge || contacts.length === 0) return;
@@ -1631,10 +1622,10 @@
           // Scroll (1 or 2)
           else if (eventType === 1 || eventType === 2) {
             if (appState === "messengerSelect" && availableMessengers.length > 1) {
-              messengerSelectIndex = eventType === 1
+              messengerSelectIndex = eventType === 2
                 ? Math.min(messengerSelectIndex + 1, availableMessengers.length - 1)
                 : Math.max(messengerSelectIndex - 1, 0);
-              updateGlassesMessengerSelection();
+              showGlassesMessengerSelect();
             } else if (appState === "conversation") {
               goToContacts();
             } else if (appState === "preview") {
