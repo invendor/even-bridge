@@ -43,26 +43,39 @@ export function createSlackMessenger(): Messenger {
     },
 
     async getContacts(): Promise<Contact[]> {
+      console.time("slack:conversations.list");
       const result = await client.conversations.list({
         types: "public_channel,private_channel,mpim,im",
         exclude_archived: true,
         limit: 100,
       });
+      console.timeEnd("slack:conversations.list");
+
+      // DMs and MPIMs don't have is_member — they're always yours
+      const channels = (result.channels || []).filter(
+        (ch) => ch.is_im || ch.is_mpim || ch.is_member
+      );
+      console.log(`Slack: ${result.channels?.length} total, ${channels.length} after filter`);
+
+      // Resolve all DM user names in parallel to avoid sequential API calls
+      const dmChannels = channels.filter((ch) => ch.is_im && ch.user);
+      if (dmChannels.length > 0) {
+        console.time("slack:resolve-names");
+        await Promise.all(dmChannels.map((ch) => resolveUserName(ch.user!)));
+        console.timeEnd("slack:resolve-names");
+      }
 
       const contacts: Contact[] = [];
 
-      for (const ch of result.channels || []) {
-        if (!ch.is_member) continue;
-
+      for (const ch of channels) {
         let name = ch.name || "Unknown";
         let isUser = false;
         const isGroup = ch.is_group || ch.is_mpim || false;
         const isChannel = ch.is_channel || false;
 
-        // For DMs, resolve the other user's name
         if (ch.is_im && ch.user) {
           isUser = true;
-          name = await resolveUserName(ch.user);
+          name = await resolveUserName(ch.user); // hits cache now
         }
 
         contacts.push({
@@ -75,6 +88,7 @@ export function createSlackMessenger(): Messenger {
         });
       }
 
+      console.log(`Slack: returning ${contacts.length} contacts`);
       return contacts;
     },
 

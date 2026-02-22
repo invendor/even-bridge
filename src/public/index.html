@@ -406,11 +406,13 @@
     let mediaStream = null;
     let logoData = null;
     let messengerIconData = {};
+    let messengerSelectBuilt = false;
     let startupShown = false;
     let conversationPollTimer = null;
     let wakeLock = null;
     // Global abort controller — aborted when page goes hidden to kill stuck fetches
     let pageAbort = new AbortController();
+    const BUILD_VERSION = "v1.1.5";
 
     async function requestWakeLock() {
       if (wakeLock) return;
@@ -538,7 +540,7 @@
     }
 
     async function fetchContacts() {
-      const resp = await fetchWithTimeout("/api/contacts");
+      const resp = await fetchWithTimeout("/api/contacts", 30000);
       if (!resp.ok) throw new Error("Failed to fetch contacts");
       return await resp.json();
     }
@@ -743,6 +745,9 @@
           }
         });
 
+        // Text container fills from selectY to bottom of screen — no scrollbar
+        const textContainerHeight = 288 - selectY;
+
         bridge.rebuildPageContainer({
           containerTotalNum: containerCount,
           textObject: [
@@ -752,7 +757,7 @@
               xPosition: textX,
               yPosition: selectY,
               width: textWidth + 10,
-              height: listHeight + 10,
+              height: textContainerHeight,
               isEventCapture: 1,
               borderWidth: 0,
               borderColor: 0,
@@ -784,19 +789,48 @@
           }
         }
 
+        messengerSelectBuilt = true;
         log("Messenger selection displayed on glasses with icons");
       } catch (e) {
         log("Messenger select display error: " + e.message);
       }
     }
 
+    function updateGlassesMessengerSelection() {
+      if (!bridge) return;
+      try {
+        bridge.textContainerUpgrade({
+          containerID: 1,
+          containerName: "select",
+          content: getMessengerSelectText(),
+        });
+      } catch (e) {
+        log("Selection update error: " + e.message);
+      }
+    }
+
+
+    // Sanitize a name for G2 display: ASCII only, limited length, no empty strings
+    function sanitizeG2Name(name) {
+      if (!name) return "Unknown";
+      // Strip non-ASCII characters, trim
+      let clean = String(name).replace(/[^\x20-\x7E]/g, "").trim();
+      if (!clean) return "Unknown";
+      // Limit length for G2 list display
+      if (clean.length > 28) clean = clean.slice(0, 28);
+      return clean;
+    }
 
     function showGlassesContactList() {
-      if (!bridge || contacts.length === 0) return;
+      if (!bridge || contacts.length === 0) {
+        log(`showGlassesContactList skipped: bridge=${!!bridge}, contacts=${contacts.length}`);
+        return;
+      }
       try {
         const hintHeight = 30;
-        const names = contacts.slice(0, 20).map((c) => c.name);
-        bridge.rebuildPageContainer({
+        const names = contacts.slice(0, 15).map((c) => sanitizeG2Name(c.name));
+        log(`G2 contact list: ${names.length} names, first="${names[0]}"`);
+        const listPayload = {
           containerTotalNum: 2,
           listObject: [
             {
@@ -835,10 +869,14 @@
               content: "Double tap to go back",
             },
           ],
-        });
+        };
+        log(`Sending rebuildPageContainer with list (${JSON.stringify(names).slice(0, 100)})`);
+        const result = bridge.rebuildPageContainer(listPayload);
+        log(`rebuildPageContainer result: ${JSON.stringify(result)}`);
         log("Contact list displayed on glasses");
       } catch (e) {
-        log("Contact list display error: " + e.message);
+        log("Contact list display error: " + (e?.message || e));
+        log("Error stack: " + (e?.stack || "none"));
       }
     }
 
@@ -1112,6 +1150,7 @@
     function selectMessenger(name) {
       appState = "processing";
       selectedMessengerName = name;
+      messengerSelectBuilt = false;
       const displayName = name.charAt(0).toUpperCase() + name.slice(1);
 
       hideBrowserMessengerList();
@@ -1234,8 +1273,12 @@
       }
 
       setStatus("Select a contact");
+      log(`isG2=${isG2}, contacts=${contacts.length}, names=${contacts.slice(0,3).map(c=>c.name).join(",")}`);
 
       if (isG2) {
+        // Small delay to let G2 firmware finish processing previous display rebuild
+        await new Promise((r) => setTimeout(r, 150));
+        log("Calling showGlassesContactList...");
         showGlassesContactList();
       }
       showBrowserContacts();
@@ -1535,6 +1578,7 @@
 
     // --- Initialize ---
     async function init() {
+      log(`Even Bridge ${BUILD_VERSION} starting`);
       // Try to detect G2 bridge
       try {
         const sdk = await import(
@@ -1625,7 +1669,11 @@
               messengerSelectIndex = eventType === 2
                 ? Math.min(messengerSelectIndex + 1, availableMessengers.length - 1)
                 : Math.max(messengerSelectIndex - 1, 0);
-              showGlassesMessengerSelect();
+              if (messengerSelectBuilt) {
+                updateGlassesMessengerSelection();
+              } else {
+                showGlassesMessengerSelect();
+              }
             } else if (appState === "conversation") {
               goToContacts();
             } else if (appState === "preview") {

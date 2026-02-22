@@ -98,8 +98,19 @@ function saveLastRecipient(recipient: { id: string; name: string; username: stri
 // --- Express + WebSocket Server ---
 const app = express();
 
+// Disable caching for HTML so G2 WebView always gets the latest version
+const noCacheHtml: express.RequestHandler = (_req, res, next) => {
+  if (_req.path === "/" || _req.path.endsWith(".html")) {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+  }
+  next();
+};
+
 const publicDir = path.join(__dirname, "public");
 const srcPublicDir = path.resolve(__dirname, "..", "src", "public");
+app.use(noCacheHtml);
 app.use(express.static(publicDir));
 app.use(express.static(srcPublicDir));
 
@@ -113,7 +124,9 @@ app.get("/api/contacts", async (_req, res) => {
       res.status(400).json({ error: "No messenger selected" });
       return;
     }
+    console.time("api:contacts");
     const contacts = await activeMessenger.getContacts();
+    console.timeEnd("api:contacts");
     res.json(contacts);
   } catch (err) {
     console.error("Error fetching contacts:", err);
