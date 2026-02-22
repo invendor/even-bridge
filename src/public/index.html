@@ -395,6 +395,7 @@
     let appState = "startup";
     let availableMessengers = [];
     let selectedMessengerName = null;
+    let messengerSelectIndex = 0;
     let contacts = [];
     let selectedContact = null;
     let conversationMessages = [];
@@ -572,12 +573,12 @@
       }
     }
 
-    // --- G2 Startup screen with logo ---
+    // --- G2 Startup screen (loading placeholder) ---
     async function showStartupScreen() {
       if (!bridge || !logoData) return;
       try {
         const imgX = Math.floor((576 - logoData.width) / 2);
-        const textLabel = "Tap to start";
+        const textLabel = "Loading...";
         const textHeight = 30;
         const totalHeight = logoData.height + 10 + textHeight;
         const imgY = Math.floor((288 - totalHeight) / 2);
@@ -636,7 +637,7 @@
         });
 
         startupShown = true;
-        log("Startup screen displayed");
+        log("Startup loading screen displayed");
       } catch (e) {
         log("Startup screen error: " + e.message);
         bridge.createStartUpPageContainer({
@@ -654,7 +655,7 @@
               borderColor: 0,
               borderRdaius: 0,
               paddingLength: 16,
-              content: "Tap to start",
+              content: "Loading...",
             },
           ],
         });
@@ -662,21 +663,148 @@
       }
     }
 
-    // --- G2 Messenger selection display ---
-    function showGlassesMessengerList() {
+    // --- G2 Messenger selection with logo + icons ---
+    function getMessengerSelectText() {
+      return availableMessengers.map((m, i) => {
+        const name = m.charAt(0).toUpperCase() + m.slice(1);
+        const prefix = i === messengerSelectIndex ? ">" : " ";
+        return `${prefix} ${name}`;
+      }).join("\n\n");
+    }
+
+    async function showGlassesMessengerSelect() {
       if (!bridge || availableMessengers.length === 0) return;
       try {
-        const names = availableMessengers.map((m) => m.charAt(0).toUpperCase() + m.slice(1));
+        const charWidth = 9;
+        const rowHeight = 40;
+        const iconGap = 10;
+        const iconSize = 24;
+        const logoW = logoData?.width || 200;
+        const logoH = logoData?.height || 72;
+        const logoGap = 25;
+
+        // Find longest row to calculate centering
+        const longestName = availableMessengers.reduce((max, m) =>
+          Math.max(max, m.length), 0);
+        // Row text: "> Name" — prefix "  " (2 chars) + name
+        const textWidth = (2 + longestName) * charWidth;
+        const totalRowWidth = textWidth + iconGap + iconSize;
+
+        // Center everything vertically (logo + gap + rows as one group)
+        const listHeight = availableMessengers.length * rowHeight;
+        const totalHeight = logoH + logoGap + listHeight;
+        const logoY = Math.floor((288 - totalHeight) / 2);
+        const selectY = logoY + logoH + logoGap;
+
+        // Center horizontally
+        const logoX = Math.floor((576 - logoW) / 2);
+        const textX = Math.floor((576 - totalRowWidth) / 2);
+        const iconX = textX + textWidth + iconGap;
+
+        const imageObjects = [];
+        const containerCount = 1 + (logoData ? 1 : 0) + availableMessengers.length;
+
+        // Logo image
+        if (logoData) {
+          imageObjects.push({
+            containerID: 2,
+            containerName: "logo",
+            xPosition: logoX,
+            yPosition: logoY,
+            width: logoData.width,
+            height: logoData.height,
+          });
+        }
+
+        // Messenger icon images — to the right of text
+        availableMessengers.forEach((name, i) => {
+          if (messengerIconData[name]) {
+            imageObjects.push({
+              containerID: 3 + i,
+              containerName: `ic${i}`,
+              xPosition: iconX,
+              yPosition: selectY + i * rowHeight,
+              width: iconSize,
+              height: iconSize,
+            });
+          }
+        });
+
         bridge.rebuildPageContainer({
-          containerTotalNum: 1,
+          containerTotalNum: containerCount,
+          textObject: [
+            {
+              containerID: 1,
+              containerName: "select",
+              xPosition: textX,
+              yPosition: selectY,
+              width: textWidth + 10,
+              height: listHeight + 10,
+              isEventCapture: 1,
+              borderWidth: 0,
+              borderColor: 0,
+              borderRdaius: 0,
+              paddingLength: 0,
+              content: getMessengerSelectText(),
+            },
+          ],
+          imageObject: imageObjects,
+        });
+
+        // Send image data sequentially (no concurrent sends allowed)
+        if (logoData) {
+          await bridge.updateImageRawData({
+            containerID: 2,
+            containerName: "logo",
+            imageData: logoData.data,
+          });
+        }
+        for (let i = 0; i < availableMessengers.length; i++) {
+          const name = availableMessengers[i];
+          const icon = messengerIconData[name];
+          if (icon) {
+            await bridge.updateImageRawData({
+              containerID: 3 + i,
+              containerName: `ic${i}`,
+              imageData: icon.data,
+            });
+          }
+        }
+
+        log("Messenger selection displayed on glasses with icons");
+      } catch (e) {
+        log("Messenger select display error: " + e.message);
+      }
+    }
+
+    function updateGlassesMessengerSelection() {
+      if (!bridge) return;
+      try {
+        bridge.textContainerUpgrade({
+          containerID: 1,
+          containerName: "select",
+          content: getMessengerSelectText(),
+        });
+      } catch (e) {
+        log("Selection update error: " + e.message);
+      }
+    }
+
+    function showGlassesContactList() {
+      if (!bridge || contacts.length === 0) return;
+      try {
+        const hintHeight = 30;
+        const names = contacts.slice(0, 20).map((c) => c.name);
+        bridge.rebuildPageContainer({
+          containerTotalNum: 2,
           listObject: [
             {
               containerID: 1,
-              containerName: "messengers",
+              containerName: "contacts",
               xPosition: 0,
               yPosition: 0,
               width: 576,
-              height: 288,
+              height: 288 - hintHeight,
               isEventCapture: 1,
               borderWidth: 1,
               borderColor: 13,
@@ -690,39 +818,20 @@
               },
             },
           ],
-        });
-        log("Messenger list displayed on glasses");
-      } catch (e) {
-        log("Messenger list display error: " + e.message);
-      }
-    }
-
-    // --- G2 Contact list display ---
-    function showGlassesContactList() {
-      if (!bridge || contacts.length === 0) return;
-      try {
-        const names = contacts.slice(0, 20).map((c) => c.name);
-        bridge.rebuildPageContainer({
-          containerTotalNum: 1,
-          listObject: [
+          textObject: [
             {
-              containerID: 1,
-              containerName: "contacts",
+              containerID: 2,
+              containerName: "hint",
               xPosition: 0,
-              yPosition: 0,
+              yPosition: 288 - hintHeight,
               width: 576,
-              height: 288,
-              isEventCapture: 1,
-              borderWidth: 1,
-              borderColor: 13,
-              borderRdaius: 6,
-              paddingLength: 5,
-              itemContainer: {
-                itemCount: names.length,
-                itemWidth: 560,
-                isItemSelectBorderEn: 1,
-                itemName: names,
-              },
+              height: hintHeight,
+              isEventCapture: 0,
+              borderWidth: 0,
+              borderColor: 0,
+              borderRdaius: 0,
+              paddingLength: 2,
+              content: "Double tap to go back",
             },
           ],
         });
@@ -761,7 +870,7 @@
                 borderWidth: 0,
                 borderColor: 0,
                 borderRdaius: 0,
-                paddingLength: centered ? 0 : 16,
+                paddingLength: centered ? 0 : 4,
                 content: text,
               },
             ],
@@ -784,13 +893,14 @@
     function showGlassesConversation(forceRebuild = false) {
       if (!bridge) return;
       try {
-        let lines = [`To: ${selectedContact.name}`, String.fromCharCode(9472).repeat(20)];
+        const divider = String.fromCharCode(9472).repeat(28);
+        let lines = [`To: ${selectedContact.name}`, divider];
 
         const msgs = [...conversationMessages].reverse();
         for (const m of msgs) {
           const sender = m.out ? "Me" : (m.senderName || selectedContact.name);
           const time = formatTime(m.date);
-          const text = (m.text || "").slice(0, 50);
+          const text = (m.text || "").slice(0, 80);
           lines.push(`${sender} (${time}): ${text}`);
         }
 
@@ -798,7 +908,7 @@
           lines.push("No messages yet");
         }
 
-        lines.push(String.fromCharCode(9472).repeat(20));
+        lines.push(divider);
         lines.push("Double tap to record | Swipe to go back");
 
         if (forceRebuild) displayRebuilt = false;
@@ -1041,10 +1151,11 @@
         return;
       }
 
+      messengerSelectIndex = 0;
       setStatus("Select a messenger");
 
       if (isG2) {
-        showGlassesMessengerList();
+        await showGlassesMessengerSelect();
       }
       showBrowserMessengerList();
     }
@@ -1422,23 +1533,17 @@
             return;
           }
 
-          // Handle list events (messenger or contact selection)
+          // Handle list events (contact selection — native list widget)
           if (event.listEvent) {
             const { currentSelectItemIndex, eventType } = event.listEvent;
             if (eventType === 0 || eventType === undefined) {
-              if (appState === "messengerSelect") {
-                const idx = currentSelectItemIndex ?? 0;
-                const name = availableMessengers[idx];
-                if (name) {
-                  selectMessenger(name);
-                }
-              } else if (appState === "contacts") {
+              if (appState === "contacts") {
                 const idx = currentSelectItemIndex ?? 0;
                 const contact = contacts[idx];
-                if (contact) {
-                  goToConversation(contact);
-                }
+                if (contact) goToConversation(contact);
               }
+            } else if (eventType === 3) {
+              if (appState === "contacts") goToMessengerSelect();
             }
             return;
           }
@@ -1458,8 +1563,9 @@
 
           // Single tap (0 or undefined)
           if (eventType === 0 || eventType === undefined) {
-            if (appState === "startup") {
-              goToMessengerSelect();
+            if (appState === "messengerSelect") {
+              const name = availableMessengers[messengerSelectIndex];
+              if (name) selectMessenger(name);
             } else if (appState === "recording") {
               toggleRecording();
             } else if (appState === "preview") {
@@ -1468,18 +1574,23 @@
           }
           // Double tap (3)
           else if (eventType === 3) {
-            if (appState === "conversation") {
+            if (appState === "contacts") {
+              goToMessengerSelect();
+            } else if (appState === "conversation") {
               toggleRecording();
             }
           }
-          // Scroll up (1) or scroll down (2)
+          // Scroll (1 or 2)
           else if (eventType === 1 || eventType === 2) {
-            if (appState === "conversation") {
+            if (appState === "messengerSelect" && availableMessengers.length > 1) {
+              messengerSelectIndex = eventType === 1
+                ? Math.min(messengerSelectIndex + 1, availableMessengers.length - 1)
+                : Math.max(messengerSelectIndex - 1, 0);
+              updateGlassesMessengerSelection();
+            } else if (appState === "conversation") {
               goToContacts();
             } else if (appState === "preview") {
               cancelPreview();
-            } else if (appState === "contacts") {
-              goToMessengerSelect();
             }
           }
         });
@@ -1491,12 +1602,8 @@
       renderHistory();
       requestWakeLock();
 
-      // Browser: go straight to messenger selection
-      if (!isG2) {
-        goToMessengerSelect();
-      } else {
-        setStatus("Tap to start");
-      }
+      // Go straight to messenger selection (both G2 and browser)
+      goToMessengerSelect();
 
       // Browser: Back button
       conversationViewEl.querySelector(".back").addEventListener("click", () => {

@@ -3,5 +3,7 @@ dist/
 .env
 telegram-session.txt
 last-recipient.json
-.claude
+# Claude Code local settings (personal, not shared)
+.claude/settings.local.json
+.claude/plans/
 qr.png

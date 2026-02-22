@@ -1,3 +1,11 @@
+---
+name: design-system
+description: >
+  Even Bridge UI design system. Use when building or styling React components,
+  working with Tailwind CSS classes, color tokens, typography, spacing,
+  or any frontend UI work.
+---
+
 # Even Bridge — UI Design System Reference
 
 This document defines the UI rules, tokens, and patterns for this project. All components must follow these guidelines. The design system is based on the Even Realities UI library.
@@ -211,20 +219,3 @@ body {
   padding: var(--layout-page-padding);  /* 12px */
 }
 ```
-
-## Rules for AI Agents
-
-1. **Never hardcode colors or spacing.** Always use the design tokens defined above.
-2. **Use `cn()` for all className composition.** Import from the project utils.
-3. **Use `forwardRef`** on all interactive/focusable components.
-4. **Follow the variant/size pattern.** Use `Record<Variant, string>` maps for variant and size classes with sensible defaults.
-5. **Always accept a `className` prop** and merge it last via `cn()` so consumers can override styles.
-6. **Apply consistent focus rings** using the focus pattern above on every focusable element.
-7. **Apply consistent disabled styles** as described above.
-8. **No dark mode.** Do not add dark-mode variants or media queries.
-9. **No shadows.** Shadows are set to `none`.
-10. **Typography hierarchy matters.** Use title classes for headings and labels, body classes for content, subtitle/detail for secondary information. Never mix weights arbitrarily.
-11. **Keep border-radius at 6px.** Use `rounded-sm` or `rounded-md` (both 6px). Only use `rounded-full` for pills, switches, and radio buttons.
-12. **Page layout**: `bc-3` background, `layout-page` padding (12px), `layout-section` gaps (8px) between sections.
-13. **Buttons default to `type="button"`** to prevent accidental form submission.
-14. **Icons inherit text color** via `fill="currentColor"`. Size them at 12 (sm), 16 (md), or 20 (lg).

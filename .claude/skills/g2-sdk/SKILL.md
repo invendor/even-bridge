@@ -1,3 +1,11 @@
+---
+name: g2-sdk
+description: >
+  Even Realities G2 smart glasses SDK reference. Use when building or modifying
+  G2 glasses features, display layouts, event handling, audio recording,
+  container management, or anything related to the glasses hardware and firmware.
+---
+
 # Even Realities G2 – AI Agent Development Reference
 
 > Use this document when building or modifying apps for the Even G2 smart glasses. It contains all SDK APIs, hardware constraints, display rules, event handling, audio format details, and known quirks needed to write correct G2 code.

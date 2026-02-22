@@ -102,24 +102,29 @@ npm start         # run compiled output
 ## Project Structure
 
 ```
+CLAUDE.md                              Project instructions for AI agents
+.claude/
+  rules/
+    code-style.md                      Auto-loaded coding standards
+  skills/
+    g2-sdk/SKILL.md                    G2 glasses SDK reference (auto-triggered)
+    design-system/SKILL.md             UI design tokens & components (auto-triggered)
 src/
-  server.ts                    Express + WebSocket + Whisper + messenger routing
+  server.ts                            Express + WebSocket + Whisper + messenger routing
   messengers/
-    types.ts                   Messenger interface and shared types
-    telegram.ts                Telegram implementation (GramJS)
-    slack.ts                   Slack implementation (@slack/web-api)
-    index.ts                   Messenger factory and availability check
+    types.ts                           Messenger interface and shared types
+    telegram.ts                        Telegram implementation (GramJS)
+    slack.ts                           Slack implementation (@slack/web-api)
+    index.ts                           Messenger factory and availability check
   public/
-    index.html                 G2 glasses frontend + browser fallback UI
-    logo.png                   Brand logo image
-    logo-data.json             Logo encoded as greyscale pixel data for G2 display
-    telegram-icon-data.json    Telegram icon encoded for G2 display
-    slack-icon-data.json       Slack icon encoded for G2 display
+    index.html                         G2 glasses frontend + browser fallback UI
+    logo.png                           Brand logo image
+    logo-data.json                     Logo encoded as greyscale pixel data for G2 display
+    telegram-icon-data.json            Telegram icon encoded for G2 display
+    slack-icon-data.json               Slack icon encoded for G2 display
   scripts/
-    pngEncoder.ts              PNG encoder with CRC32/Adler32 checksums
-    generateSlackIcon.ts       Slack icon generator
-SKILL.md                       G2 SDK reference for AI agents
-DESIGN.md                      G2 UI design system and component patterns
+    pngEncoder.ts                      PNG encoder with CRC32/Adler32 checksums
+    generateSlackIcon.ts               Slack icon generator
 ```
 
 ## Tech Stack

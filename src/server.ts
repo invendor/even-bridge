@@ -155,16 +155,17 @@ wss.on("connection", (ws: WebSocket) => {
 
       if (parsed && parsed.type === "select-messenger") {
         const name = parsed.name;
+        const displayName = name.charAt(0).toUpperCase() + name.slice(1);
         try {
           const messenger = createMessenger(name);
-          ws.send(JSON.stringify({ type: "status", text: `Connecting to ${name}...` }));
+          ws.send(JSON.stringify({ type: "status", text: `Connecting to ${displayName}...` }));
           await messenger.init();
           activeMessenger = messenger;
           ws.send(JSON.stringify({ type: "messenger-selected", name: messenger.name }));
           console.log(`Messenger selected: ${messenger.name}`);
         } catch (err) {
           console.error(`Error initializing ${name}:`, err);
-          ws.send(JSON.stringify({ type: "error", text: `Failed to connect to ${name}` }));
+          ws.send(JSON.stringify({ type: "error", text: `Failed to connect to ${displayName}` }));
         }
       } else if (raw === "stop" || (parsed && parsed.type === "stop")) {
         // Transcribe only — don't send yet
