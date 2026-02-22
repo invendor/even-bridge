@@ -5,10 +5,8 @@ import { WebSocketServer, WebSocket } from "ws";
 import OpenAI from "openai";
 import { fileURLToPath } from "url";
 import path from "path";
-import { TelegramClient } from "telegram";
-import { StringSession } from "telegram/sessions/index.js";
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import * as readline from "readline";
+import { getAvailableMessengerNames, createMessenger, type Messenger } from "./messengers/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,61 +14,17 @@ const __dirname = path.dirname(__filename);
 // --- Config ---
 const PORT = parseInt(process.env.PORT || "3000", 10);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const TELEGRAM_API_ID = parseInt(process.env.TELEGRAM_API_ID || "0", 10);
-const TELEGRAM_API_HASH = process.env.TELEGRAM_API_HASH;
 
-if (!OPENAI_API_KEY || !TELEGRAM_API_ID || !TELEGRAM_API_HASH) {
-  console.error(
-    "Missing required env vars: OPENAI_API_KEY, TELEGRAM_API_ID, TELEGRAM_API_HASH"
-  );
+if (!OPENAI_API_KEY) {
+  console.error("Missing required env var: OPENAI_API_KEY");
   process.exit(1);
 }
 
 // --- OpenAI ---
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
-// --- Telegram Client (user account) ---
-const SESSION_FILE = path.resolve(__dirname, "..", "telegram-session.txt");
-
-function loadSession(): string {
-  if (existsSync(SESSION_FILE)) {
-    return readFileSync(SESSION_FILE, "utf-8").trim();
-  }
-  return "";
-}
-
-function saveSession(session: string): void {
-  writeFileSync(SESSION_FILE, session);
-}
-
-function prompt(question: string): Promise<string> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer);
-    });
-  });
-}
-
-const stringSession = new StringSession(loadSession());
-const client = new TelegramClient(stringSession, TELEGRAM_API_ID, TELEGRAM_API_HASH, {
-  connectionRetries: 5,
-});
-
-async function initTelegram(): Promise<void> {
-  await client.start({
-    phoneNumber: () => prompt("Enter your phone number: "),
-    password: () => prompt("Enter your 2FA password (if any): "),
-    phoneCode: () => prompt("Enter the code you received: "),
-    onError: (err) => console.error("Telegram auth error:", err),
-  });
-
-  // Save session for future runs
-  const sessionStr = client.session.save() as unknown as string;
-  saveSession(sessionStr);
-  console.log("Telegram client authenticated and session saved");
-}
+// --- Active messenger (set when user selects from UI) ---
+let activeMessenger: Messenger | null = null;
 
 // --- WAV Helper ---
 function pcmToWav(pcmData: Buffer): Buffer {
@@ -135,25 +89,6 @@ function saveLastRecipient(recipient: { id: string; name: string; username: stri
   writeFileSync(LAST_RECIPIENT_FILE, JSON.stringify(recipient));
 }
 
-// --- Send to Telegram as user ---
-async function sendToTelegram(text: string, recipient: string): Promise<void> {
-  await client.sendMessage(recipient, { message: text });
-}
-
-// --- Get pinned contacts ---
-async function getPinnedContacts() {
-  const dialogs = await client.getDialogs({ limit: 100 });
-  const pinned = dialogs.filter((d) => d.pinned);
-  return pinned.map((d) => ({
-    id: d.id?.toString(),
-    name: d.title || "Unknown",
-    username: (d.entity as any)?.username || null,
-    isUser: d.isUser,
-    isGroup: d.isGroup,
-    isChannel: d.isChannel,
-  }));
-}
-
 // --- Express + WebSocket Server ---
 const app = express();
 
@@ -162,9 +97,17 @@ const srcPublicDir = path.resolve(__dirname, "..", "src", "public");
 app.use(express.static(publicDir));
 app.use(express.static(srcPublicDir));
 
+app.get("/api/available-messengers", (_req, res) => {
+  res.json(getAvailableMessengerNames());
+});
+
 app.get("/api/contacts", async (_req, res) => {
   try {
-    const contacts = await getPinnedContacts();
+    if (!activeMessenger) {
+      res.status(400).json({ error: "No messenger selected" });
+      return;
+    }
+    const contacts = await activeMessenger.getContacts();
     res.json(contacts);
   } catch (err) {
     console.error("Error fetching contacts:", err);
@@ -179,15 +122,12 @@ app.get("/api/last-recipient", (_req, res) => {
 
 app.get("/api/messages/:entityId", async (req, res) => {
   try {
-    const messages = await client.getMessages(req.params.entityId, { limit: 4 });
-    const result = messages.map((m: any) => ({
-      id: m.id,
-      text: m.message || "",
-      out: m.out,
-      date: m.date,
-      senderName: m.sender?.firstName || m.sender?.title || "",
-    }));
-    res.json(result);
+    if (!activeMessenger) {
+      res.status(400).json({ error: "No messenger selected" });
+      return;
+    }
+    const messages = await activeMessenger.getMessages(req.params.entityId, 4);
+    res.json(messages);
   } catch (err) {
     console.error("Error fetching messages:", err);
     res.status(500).json({ error: "Failed to fetch messages" });
@@ -213,8 +153,21 @@ wss.on("connection", (ws: WebSocket) => {
         parsed = JSON.parse(raw);
       } catch {}
 
-      if (raw === "stop" || (parsed && parsed.type === "stop")) {
-        // Transcribe only — don't send to Telegram yet
+      if (parsed && parsed.type === "select-messenger") {
+        const name = parsed.name;
+        try {
+          const messenger = createMessenger(name);
+          ws.send(JSON.stringify({ type: "status", text: `Connecting to ${name}...` }));
+          await messenger.init();
+          activeMessenger = messenger;
+          ws.send(JSON.stringify({ type: "messenger-selected", name: messenger.name }));
+          console.log(`Messenger selected: ${messenger.name}`);
+        } catch (err) {
+          console.error(`Error initializing ${name}:`, err);
+          ws.send(JSON.stringify({ type: "error", text: `Failed to connect to ${name}` }));
+        }
+      } else if (raw === "stop" || (parsed && parsed.type === "stop")) {
+        // Transcribe only — don't send yet
         console.log(
           `Recording stopped. Received ${audioChunks.length} audio chunks.`
         );
@@ -248,15 +201,20 @@ wss.on("connection", (ws: WebSocket) => {
           ws.send(JSON.stringify({ type: "error", text: "Error transcribing audio" }));
         }
       } else if (parsed && parsed.type === "send") {
-        // Send confirmed message to Telegram
+        // Send confirmed message
         const { text, recipient, recipientId, recipientName, recipientUsername } = parsed;
         if (!text || !recipient) {
           ws.send(JSON.stringify({ type: "error", text: "Missing text or recipient" }));
           return;
         }
 
+        if (!activeMessenger) {
+          ws.send(JSON.stringify({ type: "error", text: "No messenger selected" }));
+          return;
+        }
+
         try {
-          await sendToTelegram(text, recipient);
+          await activeMessenger.sendMessage(text, recipient);
           if (recipientId) {
             saveLastRecipient({
               id: recipientId,
@@ -284,7 +242,15 @@ wss.on("connection", (ws: WebSocket) => {
 
 // --- Start ---
 async function main() {
-  await initTelegram();
+  const available = getAvailableMessengerNames();
+  console.log(`Available messengers: ${available.join(", ") || "none"}`);
+
+  if (available.length === 0) {
+    console.error(
+      "No messenger credentials configured. Set TELEGRAM_API_ID+TELEGRAM_API_HASH or SLACK_BOT_TOKEN in .env"
+    );
+    process.exit(1);
+  }
 
   server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

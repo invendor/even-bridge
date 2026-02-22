@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Even Bridge → Telegram</title>
+  <title>Even Bridge</title>
   <style>
     :root {
       /* Text colors */
@@ -90,6 +90,37 @@
     }
     #status.error { color: var(--tc-red); }
     #status.result { color: var(--tc-green); }
+
+    /* Messenger selection */
+    #messengerList {
+      display: none;
+    }
+    #messengerList button {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: var(--spacing-12) var(--spacing-16);
+      margin-bottom: var(--layout-section);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      background: var(--bc-1);
+      color: var(--tc-1);
+      font-family: var(--font-family-sans);
+      font-size: 17px;
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s;
+      gap: var(--spacing-12);
+    }
+    #messengerList button:active { background: var(--bc-3); }
+    #messengerList button .messenger-icon {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      image-rendering: pixelated;
+    }
 
     /* Contact list */
     #contactList {
@@ -321,8 +352,9 @@
   </style>
 </head>
 <body>
-  <h1>Even Bridge → Telegram</h1>
+  <h1 id="appTitle">Even Bridge</h1>
   <div id="status">Initializing...</div>
+  <div id="messengerList"></div>
   <div id="contactList"></div>
   <div id="conversationView">
     <div class="conv-header">
@@ -344,7 +376,9 @@
   <div id="log"></div>
 
   <script type="module">
+    const appTitleEl = document.getElementById("appTitle");
     const statusEl = document.getElementById("status");
+    const messengerListEl = document.getElementById("messengerList");
     const contactListEl = document.getElementById("contactList");
     const conversationViewEl = document.getElementById("conversationView");
     const previewViewEl = document.getElementById("previewView");
@@ -357,8 +391,10 @@
     let bridge = null;
     let isG2 = false;
 
-    // App state: "startup" | "contacts" | "conversation" | "recording" | "processing" | "preview"
+    // App state: "startup" | "messengerSelect" | "contacts" | "conversation" | "recording" | "processing" | "preview"
     let appState = "startup";
+    let availableMessengers = [];
+    let selectedMessengerName = null;
     let contacts = [];
     let selectedContact = null;
     let conversationMessages = [];
@@ -368,6 +404,7 @@
     let scriptProcessor = null;
     let mediaStream = null;
     let logoData = null;
+    let messengerIconData = {};
     let startupShown = false;
     let conversationPollTimer = null;
     let wakeLock = null;
@@ -483,6 +520,12 @@
       });
     }
 
+    async function fetchAvailableMessengers() {
+      const resp = await fetchWithTimeout("/api/available-messengers");
+      if (!resp.ok) throw new Error("Failed to fetch available messengers");
+      return await resp.json();
+    }
+
     async function fetchContacts() {
       const resp = await fetchWithTimeout("/api/contacts");
       if (!resp.ok) throw new Error("Failed to fetch contacts");
@@ -503,7 +546,7 @@
       return await resp.json();
     }
 
-    // --- Load logo data ---
+    // --- Load icon data ---
     async function loadLogoData() {
       try {
         const resp = await fetch("/logo-data.json");
@@ -511,6 +554,21 @@
         log(`Logo loaded: ${logoData.width}x${logoData.height}`);
       } catch (e) {
         log("Logo load failed: " + e.message);
+      }
+    }
+
+    async function loadMessengerIcons(names) {
+      const iconFiles = { telegram: "telegram-icon-data.json", slack: "slack-icon-data.json" };
+      for (const name of names) {
+        const file = iconFiles[name];
+        if (!file) continue;
+        try {
+          const resp = await fetch(`/${file}`);
+          messengerIconData[name] = await resp.json();
+          log(`Icon loaded for ${name}`);
+        } catch (e) {
+          log(`Icon load failed for ${name}: ${e.message}`);
+        }
       }
     }
 
@@ -601,6 +659,41 @@
           ],
         });
         startupShown = true;
+      }
+    }
+
+    // --- G2 Messenger selection display ---
+    function showGlassesMessengerList() {
+      if (!bridge || availableMessengers.length === 0) return;
+      try {
+        const names = availableMessengers.map((m) => m.charAt(0).toUpperCase() + m.slice(1));
+        bridge.rebuildPageContainer({
+          containerTotalNum: 1,
+          listObject: [
+            {
+              containerID: 1,
+              containerName: "messengers",
+              xPosition: 0,
+              yPosition: 0,
+              width: 576,
+              height: 288,
+              isEventCapture: 1,
+              borderWidth: 1,
+              borderColor: 13,
+              borderRdaius: 6,
+              paddingLength: 5,
+              itemContainer: {
+                itemCount: names.length,
+                itemWidth: 560,
+                isItemSelectBorderEn: 1,
+                itemName: names,
+              },
+            },
+          ],
+        });
+        log("Messenger list displayed on glasses");
+      } catch (e) {
+        log("Messenger list display error: " + e.message);
       }
     }
 
@@ -737,10 +830,62 @@
       }
     }
 
+    // --- Browser UI: Messenger selection ---
+    function showBrowserMessengerList() {
+      if (availableMessengers.length === 0) {
+        messengerListEl.innerHTML = "<p style='color:var(--tc-2); padding:var(--spacing-16); text-align:center'>No messengers configured</p>";
+        messengerListEl.style.display = "block";
+        return;
+      }
+      let html = "";
+      for (const name of availableMessengers) {
+        const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+        html += `<button data-name="${name}">
+          <canvas class="messenger-icon" data-icon="${name}" width="24" height="24"></canvas>
+          ${displayName}
+        </button>`;
+      }
+      messengerListEl.innerHTML = html;
+      messengerListEl.style.display = "block";
+
+      // Render icons onto canvases
+      messengerListEl.querySelectorAll("canvas.messenger-icon").forEach((canvas) => {
+        const iconName = canvas.dataset.icon;
+        const iconData = messengerIconData[iconName];
+        if (iconData) {
+          renderIconToCanvas(canvas, iconData);
+        }
+      });
+
+      messengerListEl.querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          selectMessenger(btn.dataset.name);
+        });
+      });
+    }
+
+    function renderIconToCanvas(canvas, iconData) {
+      // Decode PNG bytes and draw to canvas
+      const bytes = new Uint8Array(iconData.data);
+      const blob = new Blob([bytes], { type: "image/png" });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, 24, 24);
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    }
+
+    function hideBrowserMessengerList() {
+      messengerListEl.style.display = "none";
+    }
+
     // --- Browser UI: Contacts ---
     function showBrowserContacts() {
       if (contacts.length === 0) {
-        contactListEl.innerHTML = "<p style='color:var(--tc-2); padding:var(--spacing-16); text-align:center'>No pinned contacts found</p>";
+        contactListEl.innerHTML = "<p style='color:var(--tc-2); padding:var(--spacing-16); text-align:center'>No contacts found</p>";
         contactListEl.style.display = "block";
         return;
       }
@@ -844,7 +989,66 @@
       previewViewEl.style.display = "none";
     }
 
+    // --- Select messenger ---
+    function selectMessenger(name) {
+      appState = "processing";
+      selectedMessengerName = name;
+      const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+
+      hideBrowserMessengerList();
+      setStatus(`Connecting to ${displayName}...`);
+      if (isG2) {
+        displayRebuilt = false;
+        rebuildGlassesDisplay(`Connecting to ${displayName}...`, true);
+      }
+
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "select-messenger", name }));
+      }
+    }
+
     // --- State transitions ---
+    async function goToMessengerSelect() {
+      appState = "messengerSelect";
+      selectedMessengerName = null;
+      selectedContact = null;
+      conversationMessages = [];
+      pendingText = "";
+      displayRebuilt = false;
+      contacts = [];
+      stopConversationPolling();
+      requestWakeLock();
+
+      hideBrowserContacts();
+      hideBrowserConversation();
+      hideBrowserPreview();
+
+      setStatus("Loading messengers...");
+
+      try {
+        availableMessengers = await fetchAvailableMessengers();
+        await loadMessengerIcons(availableMessengers);
+        log(`Available messengers: ${availableMessengers.join(", ")}`);
+      } catch (e) {
+        log("Error loading messengers: " + e.message);
+        setStatus("Error loading messengers", "error");
+        return;
+      }
+
+      if (availableMessengers.length === 0) {
+        setStatus("No messengers configured", "error");
+        if (isG2) rebuildGlassesDisplay("No messengers configured.\nCheck your .env file.");
+        return;
+      }
+
+      setStatus("Select a messenger");
+
+      if (isG2) {
+        showGlassesMessengerList();
+      }
+      showBrowserMessengerList();
+    }
+
     async function goToContacts() {
       appState = "contacts";
       selectedContact = null;
@@ -855,6 +1059,7 @@
       stopConversationPolling();
       requestWakeLock();
 
+      hideBrowserMessengerList();
       hideBrowserConversation();
       hideBrowserPreview();
 
@@ -867,7 +1072,7 @@
           fetchLastRecipient(),
         ]);
         contacts = fetchedContacts;
-        log(`Loaded ${contacts.length} pinned contacts`);
+        log(`Loaded ${contacts.length} contacts`);
 
         if (lastRecipient && lastRecipient.id) {
           const idx = contacts.findIndex((c) => c.id === lastRecipient.id);
@@ -888,8 +1093,8 @@
       }
 
       if (contacts.length === 0) {
-        setStatus("No pinned contacts found", "error");
-        rebuildGlassesDisplay("No pinned contacts.\nPin some chats in Telegram.");
+        setStatus("No contacts found", "error");
+        rebuildGlassesDisplay("No contacts found");
         showBrowserContacts();
         return;
       }
@@ -998,7 +1203,13 @@
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
 
-        if (msg.type === "status") {
+        if (msg.type === "messenger-selected") {
+          const displayName = msg.name;
+          log(`Messenger selected: ${displayName}`);
+          appTitleEl.textContent = `Even Bridge → ${displayName}`;
+          document.title = `Even Bridge → ${displayName}`;
+          goToContacts();
+        } else if (msg.type === "status") {
           setStatus(msg.text);
           if (isG2 && displayRebuilt) {
             rebuildGlassesDisplay(msg.text);
@@ -1035,8 +1246,10 @@
           setTimeout(() => {
             if (selectedContact) {
               refreshConversation();
-            } else {
+            } else if (selectedMessengerName) {
               goToContacts();
+            } else {
+              goToMessengerSelect();
             }
           }, 3000);
         }
@@ -1209,11 +1422,17 @@
             return;
           }
 
-          // Handle list events (contact selection)
+          // Handle list events (messenger or contact selection)
           if (event.listEvent) {
             const { currentSelectItemIndex, eventType } = event.listEvent;
             if (eventType === 0 || eventType === undefined) {
-              if (appState === "contacts") {
+              if (appState === "messengerSelect") {
+                const idx = currentSelectItemIndex ?? 0;
+                const name = availableMessengers[idx];
+                if (name) {
+                  selectMessenger(name);
+                }
+              } else if (appState === "contacts") {
                 const idx = currentSelectItemIndex ?? 0;
                 const contact = contacts[idx];
                 if (contact) {
@@ -1240,7 +1459,7 @@
           // Single tap (0 or undefined)
           if (eventType === 0 || eventType === undefined) {
             if (appState === "startup") {
-              goToContacts();
+              goToMessengerSelect();
             } else if (appState === "recording") {
               toggleRecording();
             } else if (appState === "preview") {
@@ -1259,6 +1478,8 @@
               goToContacts();
             } else if (appState === "preview") {
               cancelPreview();
+            } else if (appState === "contacts") {
+              goToMessengerSelect();
             }
           }
         });
@@ -1270,9 +1491,9 @@
       renderHistory();
       requestWakeLock();
 
-      // Browser: go straight to contacts
+      // Browser: go straight to messenger selection
       if (!isG2) {
-        goToContacts();
+        goToMessengerSelect();
       } else {
         setStatus("Tap to start");
       }
