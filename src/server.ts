@@ -73,20 +73,26 @@ async function transcribeAudio(pcmBuffer: Buffer): Promise<string> {
   return response.text;
 }
 
-// --- Last recipient persistence ---
-const LAST_RECIPIENT_FILE = path.resolve(__dirname, "..", "last-recipient.json");
+// --- Last recipient persistence (per messenger) ---
+const LAST_RECIPIENT_DIR = path.resolve(__dirname, "..");
+
+function lastRecipientFile(): string {
+  const name = activeMessenger?.name?.toLowerCase() || "unknown";
+  return path.join(LAST_RECIPIENT_DIR, `last-recipient-${name}.json`);
+}
 
 function loadLastRecipient(): { id: string; name: string; username: string | null } | null {
   try {
-    if (existsSync(LAST_RECIPIENT_FILE)) {
-      return JSON.parse(readFileSync(LAST_RECIPIENT_FILE, "utf-8"));
+    const file = lastRecipientFile();
+    if (existsSync(file)) {
+      return JSON.parse(readFileSync(file, "utf-8"));
     }
   } catch {}
   return null;
 }
 
 function saveLastRecipient(recipient: { id: string; name: string; username: string | null }): void {
-  writeFileSync(LAST_RECIPIENT_FILE, JSON.stringify(recipient));
+  writeFileSync(lastRecipientFile(), JSON.stringify(recipient));
 }
 
 // --- Express + WebSocket Server ---
@@ -247,10 +253,9 @@ async function main() {
   console.log(`Available messengers: ${available.join(", ") || "none"}`);
 
   if (available.length === 0) {
-    console.error(
-      "No messenger credentials configured. Set TELEGRAM_API_ID+TELEGRAM_API_HASH or SLACK_BOT_TOKEN in .env"
+    console.warn(
+      "No messenger credentials configured. Set TELEGRAM_API_ID+TELEGRAM_API_HASH or SLACK_USER_TOKEN in .env"
     );
-    process.exit(1);
   }
 
   server.listen(PORT, () => {

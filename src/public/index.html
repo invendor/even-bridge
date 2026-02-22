@@ -436,6 +436,7 @@
       } else if (document.visibilityState === "visible") {
         pageAbort = new AbortController();
         requestWakeLock();
+        log("Page visible — resuming");
         // Retry if we were in a loading state when the page was suspended
         const status = statusEl.textContent;
         if (status.startsWith("Loading contacts") || status === "Initializing...") {
@@ -444,6 +445,15 @@
         } else if (status.startsWith("Loading conversation") && selectedContact) {
           log("Resuming from lock — retrying conversation");
           goToConversation(selectedContact);
+        } else if (appState === "conversation" && selectedContact) {
+          // Restart polling and refresh conversation after wake
+          log("Resuming from lock — refreshing conversation");
+          refreshConversation();
+        }
+        // Reconnect WebSocket if it dropped during suspension
+        if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+          log("WebSocket dead after wake — reconnecting");
+          connectWebSocket();
         }
       }
     });
@@ -851,11 +861,19 @@
           // For centered text, position the container like the startup screen:
           // calculate X from text width (charWidth ~9px) and Y to vertically center
           const charWidth = 9;
-          const cH = centered ? 40 : 288;
-          const rowWidth = centered ? text.length * charWidth : 576;
-          const x = centered ? Math.floor((576 - rowWidth) / 2) : 0;
-          const y = centered ? Math.floor((288 - cH) / 2) : 0;
-          const w = centered ? Math.max(rowWidth, 200) : 576;
+          const lineHeight = 30;
+          let cH, rowWidth, x, y, w;
+          if (centered) {
+            const lines = text.split("\n");
+            const longestLine = lines.reduce((max, l) => Math.max(max, l.length), 0);
+            rowWidth = longestLine * charWidth;
+            cH = lines.length * lineHeight + 10;
+            x = Math.floor((576 - Math.max(rowWidth, 200)) / 2);
+            y = Math.floor((288 - cH) / 2);
+            w = Math.max(rowWidth, 200);
+          } else {
+            cH = 288; rowWidth = 576; x = 0; y = 0; w = 576;
+          }
           bridge.rebuildPageContainer({
             containerTotalNum: 1,
             textObject: [
@@ -1146,8 +1164,17 @@
       }
 
       if (availableMessengers.length === 0) {
+        const setupMsg = "No messengers configured.\n\nSet up in .env:\n\nTelegram:\n  TELEGRAM_API_ID\n  TELEGRAM_API_HASH\n\nSlack:\n  SLACK_USER_TOKEN";
         setStatus("No messengers configured", "error");
-        if (isG2) rebuildGlassesDisplay("No messengers configured.\nCheck your .env file.");
+        if (isG2) rebuildGlassesDisplay(setupMsg);
+        messengerListEl.innerHTML = `<div style="color:var(--tc-2); padding:var(--spacing-16); text-align:center; line-height:1.6">
+          <p style="font-weight:400; margin-bottom:12px">No messengers configured</p>
+          <p>Add credentials to your <code>.env</code> file:</p>
+          <p style="margin-top:8px"><b>Telegram:</b> TELEGRAM_API_ID + TELEGRAM_API_HASH</p>
+          <p><b>Slack:</b> SLACK_USER_TOKEN</p>
+          <p style="margin-top:12px; font-size:13px">Then restart the server.</p>
+        </div>`;
+        messengerListEl.style.display = "block";
         return;
       }
 
@@ -1174,33 +1201,38 @@
       hideBrowserConversation();
       hideBrowserPreview();
 
-      setStatus("Loading contacts...");
-      rebuildGlassesDisplay("Loading contacts...", true);
+      const maxRetries = 3;
+      for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+        setStatus(attempt === 1 ? "Loading contacts..." : `Retrying contacts (${attempt - 1}/${maxRetries})...`);
+        rebuildGlassesDisplay(attempt === 1 ? "Loading contacts..." : `Retrying... (${attempt - 1}/${maxRetries})`, true);
 
-      try {
-        const [fetchedContacts, lastRecipient] = await Promise.all([
-          fetchContacts(),
-          fetchLastRecipient(),
-        ]);
-        contacts = fetchedContacts;
-        log(`Loaded ${contacts.length} contacts`);
+        try {
+          const [fetchedContacts, lastRecipient] = await Promise.all([
+            fetchContacts(),
+            fetchLastRecipient(),
+          ]);
+          contacts = fetchedContacts;
+          log(`Loaded ${contacts.length} contacts`);
 
-        if (lastRecipient && lastRecipient.id) {
-          const idx = contacts.findIndex((c) => c.id === lastRecipient.id);
-          if (idx > 0) {
-            const [contact] = contacts.splice(idx, 1);
-            contacts.unshift(contact);
-            log(`Last recipient "${lastRecipient.name}" moved to top`);
-          } else if (idx === -1) {
-            contacts.unshift(lastRecipient);
-            log(`Last recipient "${lastRecipient.name}" added to top`);
+          if (lastRecipient && lastRecipient.id) {
+            const idx = contacts.findIndex((c) => c.id === lastRecipient.id);
+            if (idx > 0) {
+              const [contact] = contacts.splice(idx, 1);
+              contacts.unshift(contact);
+              log(`Last recipient "${lastRecipient.name}" moved to top`);
+            }
           }
+          break;
+        } catch (e) {
+          log(`Error loading contacts (attempt ${attempt}): ` + e.message);
+          if (attempt > maxRetries) {
+            setStatus("Connection failed", "error");
+            rebuildGlassesDisplay("Connection failed.\nReturning to main screen...");
+            setTimeout(() => goToMessengerSelect(), 3000);
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 5000));
         }
-      } catch (e) {
-        log("Error loading contacts: " + e.message);
-        setStatus("Error loading contacts", "error");
-        rebuildGlassesDisplay("Error loading contacts");
-        return;
       }
 
       if (contacts.length === 0) {
@@ -1227,17 +1259,33 @@
       hideBrowserContacts();
       hideBrowserPreview();
 
-      setStatus(`Loading conversation with ${contact.name}...`);
       // Force full rebuild — switching from LIST container to TEXT container
       displayRebuilt = false;
-      rebuildGlassesDisplay(`Loading conversation...`, true);
 
-      try {
-        const entityId = contact.username || contact.id;
-        conversationMessages = await fetchMessages(entityId);
-        log(`Loaded ${conversationMessages.length} messages`);
-      } catch (e) {
-        log("Error loading messages: " + e.message);
+      const maxRetries = 3;
+      let loaded = false;
+      for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+        setStatus(attempt === 1 ? `Loading conversation with ${contact.name}...` : `Retrying (${attempt - 1}/${maxRetries})...`);
+        rebuildGlassesDisplay(attempt === 1 ? "Loading conversation..." : `Retrying... (${attempt - 1}/${maxRetries})`, true);
+
+        try {
+          const entityId = contact.username || contact.id;
+          conversationMessages = await fetchMessages(entityId);
+          log(`Loaded ${conversationMessages.length} messages`);
+          loaded = true;
+          break;
+        } catch (e) {
+          log(`Error loading messages (attempt ${attempt}): ` + e.message);
+          if (attempt > maxRetries) {
+            setStatus("Connection failed", "error");
+            rebuildGlassesDisplay("Connection failed.\nReturning to contacts...");
+            setTimeout(() => goToContacts(), 3000);
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 5000));
+        }
+      }
+      if (!loaded) {
         conversationMessages = [];
       }
 

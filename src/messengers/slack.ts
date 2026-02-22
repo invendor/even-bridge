@@ -2,18 +2,18 @@ import { WebClient } from "@slack/web-api";
 import type { Messenger, Contact, Message } from "./types.js";
 
 export function isSlackConfigured(): boolean {
-  return !!process.env.SLACK_BOT_TOKEN;
+  return !!process.env.SLACK_USER_TOKEN;
 }
 
 export function createSlackMessenger(): Messenger {
-  const token = process.env.SLACK_BOT_TOKEN;
+  const token = process.env.SLACK_USER_TOKEN;
   if (!token) {
-    console.error("Missing SLACK_BOT_TOKEN");
+    console.error("Missing SLACK_USER_TOKEN");
     process.exit(1);
   }
 
   const client = new WebClient(token);
-  let botUserId = "";
+  let authUserId = "";
 
   // Simple cache for user display names to avoid repeated API calls
   const userNameCache = new Map<string, string>();
@@ -38,8 +38,8 @@ export function createSlackMessenger(): Messenger {
 
     async init() {
       const result = await client.auth.test();
-      botUserId = result.user_id as string;
-      console.log(`Slack authenticated as ${result.user} (bot ID: ${botUserId})`);
+      authUserId = result.user_id as string;
+      console.log(`Slack authenticated as ${result.user} (user ID: ${authUserId})`);
     },
 
     async getContacts(): Promise<Contact[]> {
@@ -68,7 +68,7 @@ export function createSlackMessenger(): Messenger {
         contacts.push({
           id: ch.id || "",
           name,
-          username: ch.name || null,
+          username: null,
           isUser,
           isGroup,
           isChannel,
@@ -92,7 +92,7 @@ export function createSlackMessenger(): Messenger {
         messages.push({
           id: msg.ts || "",
           text: msg.text || "",
-          out: msg.user === botUserId,
+          out: msg.user === authUserId,
           date: Math.floor(parseFloat(msg.ts || "0")),
           senderName,
         });

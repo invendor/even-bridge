@@ -2,7 +2,7 @@ node_modules/
 dist/
 .env
 telegram-session.txt
-last-recipient.json
+last-recipient*.json
 # Claude Code local settings (personal, not shared)
 .claude/settings.local.json
 .claude/plans/

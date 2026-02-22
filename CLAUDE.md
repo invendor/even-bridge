@@ -39,7 +39,7 @@ npm start         # run compiled output
 
 Requires `.env` with `OPENAI_API_KEY` and at least one messenger:
 - Telegram: `TELEGRAM_API_ID` + `TELEGRAM_API_HASH`
-- Slack: `SLACK_BOT_TOKEN`
+- Slack: `SLACK_USER_TOKEN`
 
 See `.env.example` for template.
 

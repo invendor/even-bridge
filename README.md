@@ -52,7 +52,7 @@ Fill in `.env`:
 | `OPENAI_API_KEY` | Your OpenAI API key from [platform.openai.com](https://platform.openai.com) |
 | `TELEGRAM_API_ID` | *(optional)* Your API ID from [my.telegram.org](https://my.telegram.org) |
 | `TELEGRAM_API_HASH` | *(optional)* Your API Hash from [my.telegram.org](https://my.telegram.org) |
-| `SLACK_BOT_TOKEN` | *(optional)* Your Slack Bot Token (see [Slack Setup](#slack-setup)) |
+| `SLACK_USER_TOKEN` | *(optional)* Your Slack User Token (see [Slack Setup](#slack-setup)) |
 | `PORT` | Server port (default: 3000) |
 
 You need at least one messenger configured (Telegram or Slack). You can configure both — the app will let you choose at startup.
@@ -67,7 +67,7 @@ You need at least one messenger configured (Telegram or Slack). You can configur
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps) and click **Create New App** → **From scratch**.
 2. Name it (e.g., "G2 Bridge") and select your workspace.
-3. Go to **OAuth & Permissions** and add these **Bot Token Scopes**:
+3. Go to **OAuth & Permissions** and add these **User Token Scopes**:
    - `channels:history` — read messages in public channels
    - `channels:read` — list public channels
    - `chat:write` — send messages
@@ -79,10 +79,9 @@ You need at least one messenger configured (Telegram or Slack). You can configur
    - `mpim:read` — list group DMs
    - `users:read` — resolve user display names
 4. Click **Install to Workspace** and authorize.
-5. Copy the **Bot User OAuth Token** (`xoxb-...`) and set it as `SLACK_BOT_TOKEN` in `.env`.
-6. Invite the bot to any channels you want to message: `/invite @G2Bridge`
+5. Copy the **User OAuth Token** (`xoxp-...`) and set it as `SLACK_USER_TOKEN` in `.env`.
 
-Messages are sent as the bot. You can customize the bot's name and profile picture in the Slack app settings to make it feel personal.
+Messages are sent as your user account, just like Telegram.
 
 ## Run
 
