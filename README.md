@@ -4,6 +4,27 @@ Speech-to-Messenger plugin for Even G2 smart glasses.
 
 Record speech, which gets transcribed via OpenAI Whisper and sent to your messenger chat. Supports **Telegram** and **Slack**.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><strong>Messenger Select</strong></td>
+    <td align="center"><strong>Contact List</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/01-messenger-select.png" width="400" alt="Messenger selection screen"></td>
+    <td><img src="docs/screenshots/02-contact-list.png" width="400" alt="Contact list screen"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Conversation</strong></td>
+    <td align="center"><strong>Send Preview</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/03-conversation.png" width="400" alt="Conversation view"></td>
+    <td><img src="docs/screenshots/04-preview.png" width="400" alt="Message preview screen"></td>
+  </tr>
+</table>
+
 ## Architecture
 
 ```
@@ -101,6 +122,8 @@ npm start         # run compiled output
 ## Project Structure
 
 ```
+docs/
+  screenshots/                         G2 display screenshots
 CLAUDE.md                              Project instructions for AI agents
 .claude/
   rules/
