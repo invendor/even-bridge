@@ -1,0 +1,48 @@
+import OpenAI from "openai";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+function pcmToWav(pcmData: Buffer): Buffer {
+  const sampleRate = 16000;
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const byteRate = (sampleRate * numChannels * bitsPerSample) / 8;
+  const blockAlign = (numChannels * bitsPerSample) / 8;
+  const dataSize = pcmData.length;
+  const headerSize = 44;
+
+  const header = Buffer.alloc(headerSize);
+
+  header.write("RIFF", 0);
+  header.writeUInt32LE(dataSize + headerSize - 8, 4);
+  header.write("WAVE", 8);
+
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(numChannels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+
+  header.write("data", 36);
+  header.writeUInt32LE(dataSize, 40);
+
+  return Buffer.concat([header, pcmData]);
+}
+
+export async function transcribeAudio(pcmBuffer: Buffer): Promise<string> {
+  const wavBuffer = pcmToWav(pcmBuffer);
+
+  const response = await openai.audio.transcriptions.create({
+    model: "whisper-1",
+    file: new File(
+      [wavBuffer.buffer.slice(wavBuffer.byteOffset, wavBuffer.byteOffset + wavBuffer.byteLength)] as BlobPart[],
+      "audio.wav",
+      { type: "audio/wav" }
+    ),
+  });
+
+  return response.text;
+}

@@ -7,7 +7,7 @@ Speech-to-messenger plugin for Even Realities G2 smart glasses. Records speech v
 ```bash
 npm run dev       # development with hot reload
 npm run dev:sim   # development + G2 simulator
-npm run build     # compile TypeScript (tsc)
+npm run build     # compile TypeScript + copy public assets
 npm start         # run compiled output
 ```
 
@@ -22,8 +22,8 @@ npm start         # run compiled output
                                                     (Telegram / Slack)
 ```
 
-- **Server**: Express + WebSocket (`ws`) — `src/server.ts`
-- **Frontend**: Single `src/public/index.html` served to the G2 WebView (also works in browser as fallback)
+- **Server**: Express + WebSocket (`ws`) — `src/server.ts` (composition root), `src/routes/`, `src/services/`, `src/websocket.ts`
+- **Frontend**: `src/public/index.html` (CSS + HTML shell) + ES modules in `src/public/js/`
 - **Messengers**: Abstracted via `Messenger` interface in `src/messengers/`
 - **G2 SDK**: `@evenrealities/even_hub_sdk` injected as `EvenAppBridge` in the WebView
 
@@ -56,3 +56,4 @@ See `.env.example` for template.
 See `.claude/skills/` for detailed domain references:
 - `g2-sdk` — G2 glasses SDK: display, events, audio, containers, simulator
 - `design-system` — UI design tokens, color system, typography, component patterns
+- `express-app` — App architecture: Express server patterns, frontend ES module structure, state management

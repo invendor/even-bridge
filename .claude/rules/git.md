@@ -17,4 +17,6 @@ description: Git commit conventions for this project. Apply when creating commit
 
 3. **Version bumping**: increment the patch version (v1.1.x) for fixes and small changes, minor version (v1.x.0) for new features.
 
-4. **Update `BUILD_VERSION`**: when committing, update the `BUILD_VERSION` constant in `src/public/index.html` to match the new release version.
+4. **Update `BUILD_VERSION`**: when committing, update the `BUILD_VERSION` constant in `src/public/js/state.js` to match the new release version.
+
+5. **Update `package.json` version**: when committing, update the `"version"` field in `package.json` to match the new release version (without the `v` prefix).
