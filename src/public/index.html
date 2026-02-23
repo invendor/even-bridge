@@ -412,7 +412,7 @@
     let wakeLock = null;
     // Global abort controller — aborted when page goes hidden to kill stuck fetches
     let pageAbort = new AbortController();
-    const BUILD_VERSION = "v1.1.5";
+    const BUILD_VERSION = "v1.1.6";
 
     async function requestWakeLock() {
       if (wakeLock) return;
@@ -810,13 +810,11 @@
     }
 
 
-    // Sanitize a name for G2 display: ASCII only, limited length, no empty strings
+    // Sanitize a name for G2 display: limited length, no empty strings
     function sanitizeG2Name(name) {
       if (!name) return "Unknown";
-      // Strip non-ASCII characters, trim
-      let clean = String(name).replace(/[^\x20-\x7E]/g, "").trim();
+      let clean = String(name).trim();
       if (!clean) return "Unknown";
-      // Limit length for G2 list display
       if (clean.length > 28) clean = clean.slice(0, 28);
       return clean;
     }
