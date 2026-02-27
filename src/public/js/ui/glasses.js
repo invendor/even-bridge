@@ -123,9 +123,10 @@ export async function showGlassesMessengerSelect() {
     const textX = Math.floor((576 - totalRowWidth) / 2);
     const iconX = textX + textWidth + iconGap;
     const iconYOffset = Math.floor((rowHeight - iconSize) / 2);
+    const textContainerHeight = 288 - selectY;
 
     const imageObjects = [];
-    const containerCount = 1 + (S.logoData ? 1 : 0) + S.availableMessengers.length;
+    let nextIconID = 3;
 
     if (S.logoData) {
       imageObjects.push({
@@ -138,13 +139,14 @@ export async function showGlassesMessengerSelect() {
       });
     }
 
-    const iconYTweak = { telegram: -4, slack: 9, gmail: 0 };
+    // Only messengers with icon data get image containers (Gmail has none)
+    const iconYTweak = { telegram: -4, slack: 9 };
     S.availableMessengers.forEach((name, i) => {
       if (S.messengerIconData[name]) {
         const tweak = iconYTweak[name] || 0;
         imageObjects.push({
-          containerID: 3 + i,
-          containerName: `ic${i}`,
+          containerID: nextIconID++,
+          containerName: `ic_${name}`,
           xPosition: iconX,
           yPosition: selectY + i * rowHeight + iconYOffset + tweak,
           width: iconSize,
@@ -153,10 +155,8 @@ export async function showGlassesMessengerSelect() {
       }
     });
 
-    const textContainerHeight = 288 - selectY;
-
     S.bridge.rebuildPageContainer({
-      containerTotalNum: containerCount,
+      containerTotalNum: 1 + imageObjects.length,
       textObject: [
         {
           containerID: 1,
@@ -183,27 +183,28 @@ export async function showGlassesMessengerSelect() {
         imageData: S.logoData.data,
       });
     }
-    for (let i = 0; i < S.availableMessengers.length; i++) {
-      const name = S.availableMessengers[i];
+    for (const img of imageObjects) {
+      if (img.containerID === 2) continue; // logo already sent
+      const name = img.containerName.replace("ic_", "");
       const icon = S.messengerIconData[name];
       if (icon) {
         await S.bridge.updateImageRawData({
-          containerID: 3 + i,
-          containerName: `ic${i}`,
+          containerID: img.containerID,
+          containerName: img.containerName,
           imageData: icon.data,
         });
       }
     }
 
     S.messengerSelectBuilt = true;
-    log("Messenger selection displayed on glasses with icons");
+    log("Messenger selection displayed on glasses");
   } catch (e) {
     log("Messenger select display error: " + e.message);
   }
 }
 
 export function updateGlassesMessengerSelection() {
-  if (!S.bridge) return;
+  if (!S.bridge || !S.messengerSelectBuilt) return;
   try {
     S.bridge.textContainerUpgrade({
       containerID: 1,
@@ -211,7 +212,7 @@ export function updateGlassesMessengerSelection() {
       content: getMessengerSelectText(),
     });
   } catch (e) {
-    log("Selection update error: " + e.message);
+    log("Messenger select update error: " + e.message);
   }
 }
 
@@ -398,7 +399,7 @@ export function showGlassesMessageView() {
       divider,
       bodyPreview,
       divider,
-      "Double tap to reply | Swipe to go back",
+      "Tap to reply | Double tap to go back",
     ];
 
     S.displayRebuilt = false;

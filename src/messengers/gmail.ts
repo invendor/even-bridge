@@ -22,6 +22,9 @@ export function createGmailMessenger(): Messenger {
     references: string;
   }>();
 
+  // Map message-id → UID for direct fetch
+  const uidCache = new Map<string, { folderId: string; uid: number }>();
+
   const smtpTransport = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 465,
@@ -142,6 +145,7 @@ export function createGmailMessenger(): Messenger {
           envelope: true,
           flags: true,
           bodyParts: ["1"],
+          uid: true,
         }, { uid: false })) {
           const envelope = msg.envelope;
           const subject = envelope?.subject || "(no subject)";
@@ -152,6 +156,10 @@ export function createGmailMessenger(): Messenger {
             : 0;
           const isRead = msg.flags?.has("\\Seen") || false;
           const messageId = envelope?.messageId || String(msg.seq);
+
+          if (msg.uid) {
+            uidCache.set(messageId, { folderId, uid: msg.uid });
+          }
 
           let bodyRaw = "";
           const bodyPart = msg.bodyParts?.get("1");
@@ -193,15 +201,24 @@ export function createGmailMessenger(): Messenger {
       const lock = await client.getMailboxLock(folderId);
 
       try {
-        const searchResult = await client.search({ header: { "message-id": messageId } });
+        // Use cached UID from list fetch; fall back to header search
+        let uid: number | undefined;
+        const cached = uidCache.get(messageId);
+        if (cached && cached.folderId === folderId) {
+          uid = cached.uid;
+        } else {
+          const searchResult = await client.search({ header: { "message-id": messageId } });
+          const uidList = searchResult as number[];
+          if (uidList && uidList.length > 0) {
+            uid = uidList[0];
+          }
+        }
 
-        if (!searchResult || (searchResult as number[]).length === 0) {
+        if (!uid) {
           throw new Error("Message not found");
         }
 
-        const uidList = searchResult as number[];
-
-        const fetchResult = await client.fetchOne(uidList[0], {
+        const fetchResult = await client.fetchOne(uid, {
           envelope: true,
           source: true,
           flags: true,
@@ -214,7 +231,7 @@ export function createGmailMessenger(): Messenger {
         const msg = fetchResult;
 
         // Mark as read
-        await client.messageFlagsAdd(uidList[0], ["\\Seen"], { uid: true });
+        await client.messageFlagsAdd(uid, ["\\Seen"], { uid: true });
 
         const envelope = msg.envelope;
         const subject = envelope?.subject || "(no subject)";

@@ -12,10 +12,7 @@ import {
   goToFolderSelect, goToMessageList, goToMessageView,
   goToSettings, leaveSettings,
 } from "./state.js";
-import {
-  showStartupScreen, showGlassesMessengerSelect,
-  updateGlassesMessengerSelection,
-} from "./ui/glasses.js";
+import { showStartupScreen, updateGlassesMessengerSelection } from "./ui/glasses.js";
 
 function withTimeout(promise, ms) {
   return new Promise((resolve, reject) => {
@@ -164,10 +161,13 @@ async function init() {
         if (S.appState === "messengerSelect") {
           const name = S.availableMessengers[S.messengerSelectIndex];
           if (name) selectMessenger(name);
+          else goToMessengerSelect();
         } else if (S.appState === "recording") {
           toggleRecording();
         } else if (S.appState === "preview") {
           sendPendingMessage();
+        } else if (S.appState === "messageView") {
+          toggleRecording();
         }
       }
       // Double tap (3)
@@ -177,7 +177,7 @@ async function init() {
         } else if (S.appState === "conversation") {
           toggleRecording();
         } else if (S.appState === "messageView") {
-          toggleRecording();
+          goToMessageList(S.session?.selectedFolder);
         } else if (S.appState === "folderSelect") {
           goToMessengerSelect();
         }
@@ -188,15 +188,9 @@ async function init() {
           S.messengerSelectIndex = eventType === 2
             ? Math.min(S.messengerSelectIndex + 1, S.availableMessengers.length - 1)
             : Math.max(S.messengerSelectIndex - 1, 0);
-          if (S.messengerSelectBuilt) {
-            updateGlassesMessengerSelection();
-          } else {
-            showGlassesMessengerSelect();
-          }
+          updateGlassesMessengerSelection();
         } else if (S.appState === "conversation") {
           goToContacts();
-        } else if (S.appState === "messageView") {
-          goToMessageList(S.session?.selectedFolder);
         } else if (S.appState === "preview") {
           cancelPreview();
         }

@@ -178,7 +178,6 @@ src/
     logo-data.json                     Logo encoded for G2 display
     telegram-icon-data.json            Telegram icon for G2 display
     slack-icon-data.json               Slack icon for G2 display
-    gmail-icon-data.json               Gmail icon for G2 display
   scripts/
     pngEncoder.ts                      PNG encoder with CRC32/Adler32 checksums
     generateSlackIcon.ts               Slack icon generator

@@ -42,7 +42,6 @@ export const S = {
   pendingText: "",
   logoData: null,
   messengerIconData: {},
-  messengerSelectBuilt: false,
   startupShown: false,
   conversationPollTimer: null,
   wakeLock: null,
@@ -53,12 +52,13 @@ export const S = {
   availableMessengers: [],
   selectedMessengerName: null,
   messengerSelectIndex: 0,
+  messengerSelectBuilt: false,
 
   // --- Active messenger session (created on select, null on switch) ---
   // Shape depends on messenger type — see createChatSession / createFolderSession
   session: null,
 
-  BUILD_VERSION: "v1.3.0",
+  BUILD_VERSION: "v1.3.2",
 };
 
 // --- Wake lock ---
@@ -107,7 +107,6 @@ export function stopConversationPolling() {
 export function selectMessenger(name) {
   S.appState = "processing";
   S.selectedMessengerName = name;
-  S.messengerSelectBuilt = false;
   const displayName = name.charAt(0).toUpperCase() + name.slice(1);
 
   hideBrowserMessengerList();
@@ -162,6 +161,8 @@ export async function goToMessengerSelect() {
   S.session = null;
   S.pendingText = "";
   S.displayRebuilt = false;
+  S.messengerSelectIndex = 0;
+  S.messengerSelectBuilt = false;
   stopConversationPolling();
   requestWakeLock();
 
@@ -174,6 +175,7 @@ export async function goToMessengerSelect() {
   hideBrowserSettings();
 
   setStatus("Loading messengers...");
+  if (S.isG2) rebuildGlassesDisplay("Loading messengers...", true);
 
   try {
     S.availableMessengers = await fetchAvailableMessengers();
@@ -182,6 +184,7 @@ export async function goToMessengerSelect() {
   } catch (e) {
     log("Error loading messengers: " + e.message);
     setStatus("Error loading messengers", "error");
+    if (S.isG2) rebuildGlassesDisplay("Connection error.\nTap to retry.", true);
     return;
   }
 
@@ -192,7 +195,6 @@ export async function goToMessengerSelect() {
     return;
   }
 
-  S.messengerSelectIndex = 0;
   setStatus("Select a messenger");
 
   if (S.isG2) {

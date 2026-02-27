@@ -135,7 +135,7 @@ export async function fetchTelegramAuthState() {
 }
 
 export async function loadMessengerIcons(names) {
-  const iconFiles = { telegram: "telegram-icon-data.json", slack: "slack-icon-data.json", gmail: "gmail-icon-data.json" };
+  const iconFiles = { telegram: "telegram-icon-data.json", slack: "slack-icon-data.json" };
   const result = {};
   for (const name of names) {
     const file = iconFiles[name];
