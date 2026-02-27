@@ -154,6 +154,106 @@
       margin-left: var(--spacing-8);
     }
 
+    /* Folder list (Gmail) */
+    #folderList { display: none; }
+    #folderList button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: var(--spacing-12) var(--spacing-16);
+      margin-bottom: var(--layout-section);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      background: var(--bc-1);
+      color: var(--tc-1);
+      font-family: var(--font-family-sans);
+      font-size: 17px;
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    #folderList button:active { background: var(--bc-3); }
+    #folderList button .type {
+      color: var(--tc-2);
+      font-size: 13px;
+      font-weight: 400;
+      flex-shrink: 0;
+      margin-left: var(--spacing-8);
+    }
+
+    /* Message list (Gmail) */
+    #messageList { display: none; }
+    #messageList button {
+      display: block;
+      width: 100%;
+      padding: var(--spacing-12) var(--spacing-16);
+      margin-bottom: var(--layout-section);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      background: var(--bc-1);
+      text-align: left;
+      cursor: pointer;
+      font-family: var(--font-family-sans);
+      letter-spacing: -0.03em;
+      transition: background 0.15s;
+    }
+    #messageList button:active { background: var(--bc-3); }
+    #messageList button.unread { border-left: 3px solid var(--bc-highlight); }
+    .email-from { font-size: 15px; font-weight: 400; color: var(--tc-1); }
+    .email-subject { font-size: 15px; font-weight: 300; color: var(--tc-1); margin-top: 2px; }
+    .email-snippet { font-size: 13px; font-weight: 300; color: var(--tc-2); margin-top: 4px; }
+
+    /* Message view (Gmail) */
+    #messageView { display: none; }
+    .msg-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--spacing-12) 0;
+    }
+    .msg-header .msg-from {
+      font-size: 20px;
+      font-weight: 400;
+      color: var(--tc-1);
+    }
+    .msg-header .back {
+      color: var(--tc-2);
+      cursor: pointer;
+      font-family: var(--font-family-sans);
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      padding: 6px var(--spacing-12);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      background: var(--bc-1);
+      transition: background 0.15s;
+    }
+    .msg-header .back:active { background: var(--bc-3); }
+    .msg-subject {
+      font-size: 15px;
+      font-weight: 300;
+      color: var(--tc-2);
+      margin-bottom: var(--spacing-8);
+    }
+    .msg-body {
+      font-size: 15px;
+      font-weight: 300;
+      color: var(--tc-1);
+      padding: var(--spacing-12) var(--spacing-16);
+      background: var(--bc-1);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: var(--spacing-12);
+    }
+
     /* Conversation view */
     #conversationView {
       display: none;
@@ -349,13 +449,185 @@
     }
     .result { color: var(--tc-green); }
     .error { color: var(--tc-red); }
+
+    /* App header with settings gear */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--spacing-16) 0 var(--spacing-12);
+    }
+    .app-header h1 { padding: 0; }
+    #settingsBtn {
+      background: var(--bc-1);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 18px;
+      line-height: 1;
+      color: var(--tc-2);
+      transition: background 0.15s;
+    }
+    #settingsBtn:active { background: var(--bc-3); }
+
+    /* Settings view */
+    #settingsView { display: none; }
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--spacing-12);
+    }
+    .settings-header .settings-title {
+      font-size: 20px;
+      font-weight: 400;
+      color: var(--tc-1);
+    }
+    .settings-section-label {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--tc-2);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: var(--spacing-16) 0 var(--spacing-8);
+    }
+    .settings-card {
+      background: var(--bc-1);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      margin-bottom: var(--layout-section);
+      overflow: hidden;
+    }
+    .settings-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--spacing-12) var(--spacing-16);
+    }
+    .settings-card-title {
+      font-size: 17px;
+      font-weight: 400;
+      color: var(--tc-1);
+    }
+    .settings-card-status {
+      font-size: 13px;
+      font-weight: 400;
+      padding: 2px 8px;
+      border-radius: var(--radius);
+    }
+    .settings-card-status.configured {
+      color: var(--tc-green);
+      background: rgba(75, 185, 86, 0.1);
+    }
+    .settings-card-status.not-configured {
+      color: var(--tc-2);
+      background: var(--bc-2);
+    }
+    .settings-card-body {
+      padding: 0 var(--spacing-16) var(--spacing-16);
+    }
+    .settings-card-body label {
+      display: block;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--tc-2);
+      margin-bottom: var(--spacing-8);
+    }
+    .settings-card-body input {
+      display: block;
+      width: 100%;
+      margin-top: 4px;
+      padding: var(--spacing-8) var(--spacing-12);
+      border: 1px solid var(--bc-4);
+      border-radius: var(--radius);
+      font-family: var(--font-family-sans);
+      font-size: 15px;
+      font-weight: 300;
+      letter-spacing: -0.03em;
+      color: var(--tc-1);
+      background: var(--bc-2);
+      outline: none;
+    }
+    .settings-card-body input:focus {
+      border-color: var(--bc-highlight);
+    }
+    .settings-card-actions {
+      display: flex;
+      gap: var(--spacing-8);
+      margin-top: var(--spacing-12);
+    }
+    .settings-card-actions button,
+    .telegram-auth button {
+      padding: var(--spacing-8) var(--spacing-16);
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font-family-sans);
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .settings-save {
+      background: var(--bc-highlight);
+      color: var(--tc-highlight);
+      flex: 1;
+    }
+    .settings-save:active { background: var(--tc-1); }
+    .settings-remove {
+      background: var(--bc-1);
+      color: var(--tc-red);
+      border: 1px solid var(--bc-4) !important;
+    }
+    .settings-remove:active { background: var(--bc-3); }
+    .settings-divider {
+      height: 1px;
+      background: var(--bc-4);
+      margin: var(--spacing-12) 0;
+    }
+    .telegram-auth button {
+      width: 100%;
+      background: var(--bc-highlight);
+      color: var(--tc-highlight);
+      margin-top: var(--spacing-8);
+    }
+    .telegram-auth button:active { background: var(--tc-1); }
+    #telegramAuthStatus {
+      font-size: 13px;
+      font-weight: 400;
+      padding: var(--spacing-8);
+      margin-top: var(--spacing-8);
+      border-radius: var(--radius);
+      text-align: center;
+    }
+    .settings-help {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--tc-2);
+      margin-top: 4px;
+      line-height: 1.4;
+    }
   </style>
 </head>
 <body>
-  <h1 id="appTitle">Even Bridge</h1>
+  <div class="app-header">
+    <h1 id="appTitle">Even Bridge</h1>
+    <button id="settingsBtn" type="button" title="Settings">&#9881;</button>
+  </div>
   <div id="status">Initializing...</div>
   <div id="messengerList"></div>
   <div id="contactList"></div>
+  <div id="folderList"></div>
+  <div id="messageList"></div>
+  <div id="messageView">
+    <div class="msg-header">
+      <span class="msg-from"></span>
+      <span class="back">Back</span>
+    </div>
+    <div class="msg-subject"></div>
+    <div class="msg-body"></div>
+  </div>
   <div id="conversationView">
     <div class="conv-header">
       <span class="name"></span>
@@ -372,6 +644,100 @@
       <button class="cancel-btn">Cancel</button>
     </div>
   </div>
+  <div id="settingsView">
+    <div class="settings-header">
+      <span class="settings-title">Settings</span>
+      <button id="settingsBackBtn" type="button" style="
+        color:var(--tc-2); cursor:pointer; font-family:var(--font-family-sans);
+        font-size:15px; font-weight:400; letter-spacing:-0.03em;
+        padding:6px var(--spacing-12); border:1px solid var(--bc-4);
+        border-radius:var(--radius); background:var(--bc-1); transition:background 0.15s;
+      ">Back</button>
+    </div>
+
+    <div class="settings-section-label">Required</div>
+
+    <div class="settings-card" id="settingsOpenai">
+      <div class="settings-card-header">
+        <span class="settings-card-title">OpenAI</span>
+        <span class="settings-card-status" data-status="openai"></span>
+      </div>
+      <div class="settings-card-body">
+        <label>API Key<input type="password" data-field="apiKey" placeholder="sk-..." autocomplete="off"></label>
+        <div class="settings-help">Required for speech-to-text transcription</div>
+        <div class="settings-card-actions">
+          <button type="button" class="settings-save" data-service="openai">Save</button>
+          <button type="button" class="settings-remove" data-service="openai">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section-label">Messengers</div>
+
+    <div class="settings-card" id="settingsTelegram">
+      <div class="settings-card-header">
+        <span class="settings-card-title">Telegram</span>
+        <span class="settings-card-status" data-status="telegram"></span>
+      </div>
+      <div class="settings-card-body">
+        <label>API ID<input type="text" data-field="apiId" placeholder="12345678" autocomplete="off"></label>
+        <label>API Hash<input type="password" data-field="apiHash" placeholder="abc123..." autocomplete="off"></label>
+        <div class="settings-help">Get credentials at my.telegram.org</div>
+        <div class="settings-card-actions">
+          <button type="button" class="settings-save" data-service="telegram">Save</button>
+          <button type="button" class="settings-remove" data-service="telegram">Remove</button>
+        </div>
+        <div class="telegram-auth" id="telegramAuth" style="display:none">
+          <div class="settings-divider"></div>
+          <div id="telegramPhoneStep">
+            <label>Phone Number<input type="tel" id="telegramPhone" placeholder="+1234567890" autocomplete="off"></label>
+            <button type="button" id="telegramAuthStart">Authenticate</button>
+          </div>
+          <div id="telegramCodeStep" style="display:none">
+            <label>Verification Code<input type="text" id="telegramCode" placeholder="12345" autocomplete="off" inputmode="numeric"></label>
+            <button type="button" id="telegramCodeSubmit">Submit Code</button>
+          </div>
+          <div id="telegramPasswordStep" style="display:none">
+            <label>2FA Password<input type="password" id="telegramPassword" placeholder="Your 2FA password" autocomplete="off"></label>
+            <button type="button" id="telegramPasswordSubmit">Submit Password</button>
+          </div>
+          <div id="telegramAuthStatus" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-card" id="settingsSlack">
+      <div class="settings-card-header">
+        <span class="settings-card-title">Slack</span>
+        <span class="settings-card-status" data-status="slack"></span>
+      </div>
+      <div class="settings-card-body">
+        <label>User Token<input type="password" data-field="userToken" placeholder="xoxp-..." autocomplete="off"></label>
+        <div class="settings-help">Create a Slack app with chat:write scope, use the User OAuth Token</div>
+        <div class="settings-card-actions">
+          <button type="button" class="settings-save" data-service="slack">Save</button>
+          <button type="button" class="settings-remove" data-service="slack">Remove</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-card" id="settingsGmail">
+      <div class="settings-card-header">
+        <span class="settings-card-title">Gmail</span>
+        <span class="settings-card-status" data-status="gmail"></span>
+      </div>
+      <div class="settings-card-body">
+        <label>Email Address<input type="email" data-field="address" placeholder="you@gmail.com" autocomplete="off"></label>
+        <label>App Password<input type="password" data-field="appPassword" placeholder="16-char app password" autocomplete="off"></label>
+        <div class="settings-help">Enable 2-Step Verification, then generate at Google Account > Security > App passwords</div>
+        <div class="settings-card-actions">
+          <button type="button" class="settings-save" data-service="gmail">Save</button>
+          <button type="button" class="settings-remove" data-service="gmail">Remove</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="history"></div>
   <div id="log"></div>
 

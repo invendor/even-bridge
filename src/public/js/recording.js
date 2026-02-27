@@ -74,8 +74,8 @@ function stopRecordingBrowser() {
 }
 
 export async function toggleRecording() {
-  if (!S.selectedContact) {
-    log("No contact selected, ignoring tap");
+  if (!S.session?.selectedContact && !S.session?.selectedMessage) {
+    log("No contact or message selected, ignoring tap");
     return;
   }
   requestWakeLock();
@@ -85,7 +85,8 @@ export async function toggleRecording() {
     S.appState = "recording";
     stopConversationPolling();
     updateRecordButton("recording");
-    setStatus(`Recording for ${S.selectedContact.name}...`);
+    const target = S.session.selectedContact?.name || S.session.selectedMessage?.from || "Unknown";
+    setStatus(`Recording for ${target}...`);
 
     if (S.isG2) {
       S.displayRebuilt = false;

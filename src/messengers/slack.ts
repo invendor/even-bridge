@@ -1,15 +1,15 @@
 import { WebClient } from "@slack/web-api";
 import type { Messenger, Contact, Message } from "./types.js";
+import { getCredential } from "../services/settings.js";
 
 export function isSlackConfigured(): boolean {
-  return !!process.env.SLACK_USER_TOKEN;
+  return !!getCredential("slack.userToken");
 }
 
 export function createSlackMessenger(): Messenger {
-  const token = process.env.SLACK_USER_TOKEN;
+  const token = getCredential("slack.userToken");
   if (!token) {
-    console.error("Missing SLACK_USER_TOKEN");
-    process.exit(1);
+    throw new Error("Missing Slack user token");
   }
 
   const client = new WebClient(token);

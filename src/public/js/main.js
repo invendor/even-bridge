@@ -4,11 +4,13 @@ import { initHistory, renderHistory } from "./history.js";
 import { initBrowserUI } from "./ui/browser.js";
 import { connectWebSocket } from "./ws.js";
 import { toggleRecording } from "./recording.js";
-import { loadLogoData } from "./api.js";
+import { loadLogoData, saveServiceSettings, deleteServiceSettings, startTelegramAuth, submitTelegramCode, submitTelegramPassword, fetchSettingsStatus } from "./api.js";
 import {
   goToMessengerSelect, goToContacts, goToConversation,
   selectMessenger, sendPendingMessage, cancelPreview,
   refreshConversation, requestWakeLock,
+  goToFolderSelect, goToMessageList, goToMessageView,
+  goToSettings, leaveSettings,
 } from "./state.js";
 import {
   showStartupScreen, showGlassesMessengerSelect,
@@ -33,13 +35,16 @@ document.addEventListener("visibilitychange", () => {
     log("Page visible — resuming");
 
     const status = getStatusText();
-    if (status.startsWith("Loading contacts") || status === "Initializing...") {
+    if (status.startsWith("Loading folders")) {
+      log("Resuming from lock — retrying folders");
+      goToFolderSelect();
+    } else if (status.startsWith("Loading contacts") || status === "Initializing...") {
       log("Resuming from lock — retrying contacts");
       goToContacts();
-    } else if (status.startsWith("Loading conversation") && S.selectedContact) {
+    } else if (status.startsWith("Loading conversation") && S.session?.selectedContact) {
       log("Resuming from lock — retrying conversation");
-      goToConversation(S.selectedContact);
-    } else if (S.appState === "conversation" && S.selectedContact) {
+      goToConversation(S.session.selectedContact);
+    } else if (S.appState === "conversation" && S.session?.selectedContact) {
       log("Resuming from lock — refreshing conversation");
       refreshConversation();
     }
@@ -62,6 +67,12 @@ async function init() {
   const recordBtn = document.getElementById("recordBtn");
   const historyEl = document.getElementById("history");
   const logEl = document.getElementById("log");
+  const folderListEl = document.getElementById("folderList");
+  const messageListEl = document.getElementById("messageList");
+  const messageViewEl = document.getElementById("messageView");
+  const settingsViewEl = document.getElementById("settingsView");
+  const settingsBtn = document.getElementById("settingsBtn");
+  const settingsBackBtn = document.getElementById("settingsBackBtn");
 
   initUtils({ statusEl, logEl });
   initHistory(historyEl);
@@ -72,6 +83,10 @@ async function init() {
     previewViewEl,
     recordBtn,
     appTitleEl,
+    folderListEl,
+    messageListEl,
+    messageViewEl,
+    settingsViewEl,
   });
 
   log(`Even Bridge ${S.BUILD_VERSION} starting`);
@@ -108,17 +123,25 @@ async function init() {
         return;
       }
 
-      // List events (contact selection)
+      // List events (contact/folder/message selection)
       if (event.listEvent) {
         const { currentSelectItemIndex, eventType } = event.listEvent;
         if (eventType === 0 || eventType === undefined) {
+          const idx = currentSelectItemIndex ?? 0;
           if (S.appState === "contacts") {
-            const idx = currentSelectItemIndex ?? 0;
-            const contact = S.contacts[idx];
+            const contact = S.session?.contacts[idx];
             if (contact) goToConversation(contact);
+          } else if (S.appState === "folderSelect") {
+            const folder = S.session?.folders[idx];
+            if (folder) goToMessageList(folder);
+          } else if (S.appState === "messageList") {
+            const msg = S.session?.folderMessages[idx];
+            if (msg) goToMessageView(msg);
           }
         } else if (eventType === 3) {
           if (S.appState === "contacts") goToMessengerSelect();
+          else if (S.appState === "folderSelect") goToMessengerSelect();
+          else if (S.appState === "messageList") goToFolderSelect();
         }
         return;
       }
@@ -153,6 +176,10 @@ async function init() {
           goToMessengerSelect();
         } else if (S.appState === "conversation") {
           toggleRecording();
+        } else if (S.appState === "messageView") {
+          toggleRecording();
+        } else if (S.appState === "folderSelect") {
+          goToMessengerSelect();
         }
       }
       // Scroll (1 or 2)
@@ -168,6 +195,8 @@ async function init() {
           }
         } else if (S.appState === "conversation") {
           goToContacts();
+        } else if (S.appState === "messageView") {
+          goToMessageList(S.session?.selectedFolder);
         } else if (S.appState === "preview") {
           cancelPreview();
         }
@@ -187,9 +216,160 @@ async function init() {
   conversationViewEl.querySelector(".back").addEventListener("click", () => {
     goToContacts();
   });
+  messageViewEl.querySelector(".back").addEventListener("click", () => {
+    goToMessageList(S.session?.selectedFolder);
+  });
   recordBtn.addEventListener("click", toggleRecording);
   previewViewEl.querySelector(".send-btn").addEventListener("click", sendPendingMessage);
   previewViewEl.querySelector(".cancel-btn").addEventListener("click", cancelPreview);
+
+  // Settings event listeners
+  settingsBtn.addEventListener("click", () => goToSettings());
+  settingsBackBtn.addEventListener("click", () => leaveSettings());
+
+  // Delegated save/remove handlers for settings cards
+  settingsViewEl.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+
+    const service = btn.dataset.service;
+    if (!service) return;
+
+    if (btn.classList.contains("settings-save")) {
+      const card = btn.closest(".settings-card");
+      const inputs = card.querySelectorAll("input[data-field]");
+      const data = {};
+      for (const input of inputs) {
+        data[input.dataset.field] = input.value.trim();
+      }
+
+      const hasValue = Object.values(data).some((v) => v);
+      if (!hasValue) {
+        log("No values to save");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Saving...";
+      try {
+        await saveServiceSettings(service, data);
+        log(`${service} settings saved`);
+        const status = await fetchSettingsStatus();
+        const { showBrowserSettings } = await import("./ui/browser.js");
+        showBrowserSettings(status);
+      } catch (err) {
+        log(`Error saving ${service}: ${err.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Save";
+      }
+    } else if (btn.classList.contains("settings-remove")) {
+      btn.disabled = true;
+      btn.textContent = "Removing...";
+      try {
+        await deleteServiceSettings(service);
+        log(`${service} settings removed`);
+        const card = btn.closest(".settings-card");
+        card.querySelectorAll("input[data-field]").forEach((input) => {
+          input.value = "";
+        });
+        const status = await fetchSettingsStatus();
+        const { showBrowserSettings } = await import("./ui/browser.js");
+        showBrowserSettings(status);
+      } catch (err) {
+        log(`Error removing ${service}: ${err.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Remove";
+      }
+    }
+  });
+
+  // Telegram auth flow handlers
+  function updateTelegramAuthUI(result) {
+    const phoneStep = document.getElementById("telegramPhoneStep");
+    const codeStep = document.getElementById("telegramCodeStep");
+    const passwordStep = document.getElementById("telegramPasswordStep");
+    const authStatus = document.getElementById("telegramAuthStatus");
+
+    phoneStep.style.display = "none";
+    codeStep.style.display = "none";
+    passwordStep.style.display = "none";
+    authStatus.style.display = "none";
+
+    if (result.state === "idle") {
+      phoneStep.style.display = "block";
+    } else if (result.state === "awaiting_code") {
+      codeStep.style.display = "block";
+    } else if (result.state === "awaiting_password") {
+      passwordStep.style.display = "block";
+    } else if (result.state === "authenticated") {
+      authStatus.style.display = "block";
+      authStatus.textContent = "Authenticated";
+      authStatus.style.color = "var(--tc-green)";
+      authStatus.style.background = "rgba(75, 185, 86, 0.1)";
+    } else if (result.state === "error") {
+      authStatus.style.display = "block";
+      authStatus.textContent = result.error || "Authentication failed";
+      authStatus.style.color = "var(--tc-red)";
+      authStatus.style.background = "rgba(255, 69, 58, 0.1)";
+      phoneStep.style.display = "block";
+    }
+  }
+
+  document.getElementById("telegramAuthStart").addEventListener("click", async (e) => {
+    const phone = document.getElementById("telegramPhone").value.trim();
+    if (!phone) return;
+    e.target.disabled = true;
+    e.target.textContent = "Sending code...";
+    try {
+      const result = await startTelegramAuth(phone);
+      log("Telegram auth: " + result.state);
+      updateTelegramAuthUI(result);
+    } catch (err) {
+      log("Telegram auth error: " + err.message);
+      updateTelegramAuthUI({ state: "error", error: err.message });
+    } finally {
+      e.target.disabled = false;
+      e.target.textContent = "Authenticate";
+    }
+  });
+
+  document.getElementById("telegramCodeSubmit").addEventListener("click", async (e) => {
+    const code = document.getElementById("telegramCode").value.trim();
+    if (!code) return;
+    e.target.disabled = true;
+    e.target.textContent = "Verifying...";
+    try {
+      const result = await submitTelegramCode(code);
+      log("Telegram code result: " + result.state);
+      updateTelegramAuthUI(result);
+    } catch (err) {
+      log("Telegram code error: " + err.message);
+      updateTelegramAuthUI({ state: "error", error: err.message });
+    } finally {
+      e.target.disabled = false;
+      e.target.textContent = "Submit Code";
+    }
+  });
+
+  document.getElementById("telegramPasswordSubmit").addEventListener("click", async (e) => {
+    const password = document.getElementById("telegramPassword").value.trim();
+    if (!password) return;
+    e.target.disabled = true;
+    e.target.textContent = "Verifying...";
+    try {
+      const result = await submitTelegramPassword(password);
+      log("Telegram password result: " + result.state);
+      updateTelegramAuthUI(result);
+    } catch (err) {
+      log("Telegram password error: " + err.message);
+      updateTelegramAuthUI({ state: "error", error: err.message });
+    } finally {
+      e.target.disabled = false;
+      e.target.textContent = "Submit Password";
+    }
+  });
 }
 
 init().catch((err) => {

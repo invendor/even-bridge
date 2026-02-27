@@ -2,6 +2,8 @@ import { S } from "../state.js";
 import { formatTime, renderIconToCanvas } from "../utils.js";
 
 let messengerListEl, contactListEl, conversationViewEl, previewViewEl, recordBtn, appTitleEl;
+let folderListEl, messageListEl, messageViewEl;
+let settingsViewEl;
 
 export function initBrowserUI(elements) {
   messengerListEl = elements.messengerListEl;
@@ -10,6 +12,10 @@ export function initBrowserUI(elements) {
   previewViewEl = elements.previewViewEl;
   recordBtn = elements.recordBtn;
   appTitleEl = elements.appTitleEl;
+  folderListEl = elements.folderListEl;
+  messageListEl = elements.messageListEl;
+  messageViewEl = elements.messageViewEl;
+  settingsViewEl = elements.settingsViewEl;
 }
 
 export function showBrowserMessengerList(onSelect) {
@@ -49,13 +55,13 @@ export function hideBrowserMessengerList() {
 }
 
 export function showBrowserContacts(onContactSelect) {
-  if (S.contacts.length === 0) {
+  if (!S.session?.contacts?.length) {
     contactListEl.innerHTML = "<p style='color:var(--tc-2); padding:var(--spacing-16); text-align:center'>No contacts found</p>";
     contactListEl.style.display = "block";
     return;
   }
   let html = "";
-  for (const c of S.contacts) {
+  for (const c of S.session.contacts) {
     const typeLabel = c.isGroup ? "group" : c.isChannel ? "channel" : "user";
     html += `<button data-id="${c.id}" data-name="${c.name}" data-username="${c.username || ""}">
       ${c.name}<span class="type">${typeLabel}</span>
@@ -81,11 +87,11 @@ export function hideBrowserContacts() {
 }
 
 export function showBrowserConversation() {
-  if (!S.selectedContact) return;
-  conversationViewEl.querySelector(".conv-header .name").textContent = S.selectedContact.name;
+  if (!S.session?.selectedContact) return;
+  conversationViewEl.querySelector(".conv-header .name").textContent = S.session.selectedContact.name;
 
   const msgsEl = conversationViewEl.querySelector(".conv-messages");
-  const msgs = [...S.conversationMessages].reverse();
+  const msgs = [...S.session.conversationMessages].reverse();
 
   if (msgs.length === 0) {
     msgsEl.innerHTML = '<div style="color:var(--tc-2); text-align:center; padding:var(--spacing-20)">No messages yet</div>';
@@ -93,7 +99,7 @@ export function showBrowserConversation() {
     let html = "";
     for (const m of msgs) {
       const cls = m.out ? "out" : "in";
-      const sender = m.out ? "Me" : (m.senderName || S.selectedContact.name);
+      const sender = m.out ? "Me" : (m.senderName || S.session.selectedContact.name);
       const text = m.text || "";
       const time = formatTime(m.date);
       html += `<div class="conv-msg ${cls}">
@@ -126,6 +132,82 @@ export function hideBrowserPreview() {
   previewViewEl.style.display = "none";
 }
 
+// --- Gmail folder/message browser views ---
+
+export function showBrowserFolderList(onSelect) {
+  if (!S.session?.folders?.length) {
+    folderListEl.innerHTML = "<p style='color:var(--tc-2); padding:var(--spacing-16); text-align:center'>No folders</p>";
+    folderListEl.style.display = "block";
+    return;
+  }
+  let html = "";
+  for (const f of S.session.folders) {
+    const badge = f.unreadCount > 0
+      ? `<span class="type">${f.unreadCount} unread</span>`
+      : "";
+    html += `<button data-id="${f.id}" data-name="${f.name}">
+      ${f.name}${badge}
+    </button>`;
+  }
+  folderListEl.innerHTML = html;
+  folderListEl.style.display = "block";
+  folderListEl.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      onSelect({ id: btn.dataset.id, name: btn.dataset.name });
+    });
+  });
+}
+
+export function hideBrowserFolderList() {
+  if (folderListEl) folderListEl.style.display = "none";
+}
+
+export function showBrowserMessageList(onSelect) {
+  if (!S.session?.folderMessages?.length) {
+    messageListEl.innerHTML = "<p style='color:var(--tc-2); padding:var(--spacing-16); text-align:center'>No messages</p>";
+    messageListEl.style.display = "block";
+    return;
+  }
+  let html = "";
+  for (const m of S.session.folderMessages) {
+    const unreadCls = m.isRead ? "" : " unread";
+    html += `<button data-id="${m.id}" class="email-item${unreadCls}">
+      <div class="email-from">${m.from}</div>
+      <div class="email-subject">${m.subject}</div>
+      <div class="email-snippet">${m.snippet}</div>
+    </button>`;
+  }
+  messageListEl.innerHTML = html;
+  messageListEl.style.display = "block";
+  messageListEl.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const msg = S.session.folderMessages.find((m) => m.id === btn.dataset.id);
+      if (msg) onSelect(msg);
+    });
+  });
+}
+
+export function hideBrowserMessageList() {
+  if (messageListEl) messageListEl.style.display = "none";
+}
+
+export function showBrowserMessageView() {
+  if (!S.session?.selectedMessage) return;
+  const m = S.session.selectedMessage;
+  messageViewEl.querySelector(".msg-from").textContent = m.from;
+  messageViewEl.querySelector(".msg-subject").textContent = m.subject;
+  messageViewEl.querySelector(".msg-body").textContent = m.body || m.snippet;
+  messageViewEl.style.display = "block";
+  recordBtn.style.display = "block";
+  recordBtn.disabled = false;
+  recordBtn.textContent = "Tap to Record Reply";
+  recordBtn.classList.remove("recording");
+}
+
+export function hideBrowserMessageView() {
+  if (messageViewEl) messageViewEl.style.display = "none";
+}
+
 export function updateAppTitle(text) {
   appTitleEl.textContent = text;
   document.title = text;
@@ -149,13 +231,35 @@ export function updateRecordButton(state) {
   }
 }
 
-export function showNoMessengersConfigured() {
-  messengerListEl.innerHTML = `<div style="color:var(--tc-2); padding:var(--spacing-16); text-align:center; line-height:1.6">
-    <p style="font-weight:400; margin-bottom:12px">No messengers configured</p>
-    <p>Add credentials to your <code>.env</code> file:</p>
-    <p style="margin-top:8px"><b>Telegram:</b> TELEGRAM_API_ID + TELEGRAM_API_HASH</p>
-    <p><b>Slack:</b> SLACK_USER_TOKEN</p>
-    <p style="margin-top:12px; font-size:13px">Then restart the server.</p>
-  </div>`;
-  messengerListEl.style.display = "block";
+export function showBrowserSettings(status) {
+  if (!settingsViewEl) return;
+  // Update status badges
+  for (const [service, info] of Object.entries(status)) {
+    const badge = settingsViewEl.querySelector(`[data-status="${service}"]`);
+    if (badge) {
+      const isConfigured = info.configured;
+      badge.textContent = isConfigured ? "Configured" : "Not configured";
+      badge.className = "settings-card-status " + (isConfigured ? "configured" : "not-configured");
+    }
+  }
+  // Show Telegram auth section if credentials are saved
+  const telegramAuth = document.getElementById("telegramAuth");
+  if (telegramAuth) {
+    telegramAuth.style.display = status.telegram?.configured ? "block" : "none";
+    // Show authenticated status if session exists
+    if (status.telegram?.authenticated) {
+      const authStatus = document.getElementById("telegramAuthStatus");
+      if (authStatus) {
+        authStatus.style.display = "block";
+        authStatus.textContent = "Authenticated";
+        authStatus.style.color = "var(--tc-green)";
+        authStatus.style.background = "rgba(75, 185, 86, 0.1)";
+      }
+    }
+  }
+  settingsViewEl.style.display = "block";
+}
+
+export function hideBrowserSettings() {
+  if (settingsViewEl) settingsViewEl.style.display = "none";
 }

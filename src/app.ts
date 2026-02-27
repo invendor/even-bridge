@@ -3,6 +3,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 import type { Messenger } from "./messengers/types.js";
 import { createApiRouter } from "./routes/api.js";
+import { createSettingsRouter } from "./routes/settings.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,7 +36,8 @@ const srcPublicDir = path.resolve(__dirname, "..", "src", "public");
 app.use(noCacheHtml);
 app.use(express.static(publicDir));
 app.use(express.static(srcPublicDir));
-app.use("/api", createApiRouter(() => activeMessenger));
 app.use(express.json());
+app.use("/api/settings", createSettingsRouter());
+app.use("/api", createApiRouter(() => activeMessenger));
 
 export default app;

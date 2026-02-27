@@ -1,25 +1,45 @@
 import { log, setStatus } from "./utils.js";
-import { fetchAvailableMessengers, fetchContacts, fetchLastRecipient, fetchMessages, loadMessengerIcons } from "./api.js";
-import { showBrowserMessengerList, hideBrowserMessengerList, showBrowserContacts, hideBrowserContacts, showBrowserConversation, hideBrowserConversation, showBrowserPreview, hideBrowserPreview, updateAppTitle, updateRecordButton, showNoMessengersConfigured } from "./ui/browser.js";
-import { showGlassesMessengerSelect, showGlassesContactList, showGlassesConversation, showGlassesPreview, rebuildGlassesDisplay } from "./ui/glasses.js";
+import { fetchAvailableMessengers, fetchContacts, fetchLastRecipient, fetchMessages, loadMessengerIcons, fetchFolders, fetchFolderMessages, fetchFolderMessage, fetchSettingsStatus } from "./api.js";
+import { showBrowserMessengerList, hideBrowserMessengerList, showBrowserContacts, hideBrowserContacts, showBrowserConversation, hideBrowserConversation, showBrowserPreview, hideBrowserPreview, updateAppTitle, updateRecordButton, showBrowserFolderList, hideBrowserFolderList, showBrowserMessageList, hideBrowserMessageList, showBrowserMessageView, hideBrowserMessageView, showBrowserSettings, hideBrowserSettings } from "./ui/browser.js";
+import { showGlassesMessengerSelect, showGlassesContactList, showGlassesConversation, showGlassesPreview, rebuildGlassesDisplay, showGlassesFolderList, showGlassesMessageList, showGlassesMessageView } from "./ui/glasses.js";
 import { saveMessage, renderHistory } from "./history.js";
 
+// --- Messenger session factories ---
+// Each messenger type gets its own session shape.
+// Add new factory when adding a messenger with different navigation.
+
+function createChatSession() {
+  return {
+    type: "chat",
+    contacts: [],
+    selectedContact: null,
+    conversationMessages: [],
+  };
+}
+
+function createFolderSession() {
+  return {
+    type: "folder",
+    folders: [],
+    selectedFolder: null,
+    folderMessages: [],
+    selectedMessage: null,
+  };
+}
+
 export const S = {
+  // --- Hardware & connection ---
   ws: null,
   isRecording: false,
   bridge: null,
   isG2: false,
-  appState: "startup",
-  availableMessengers: [],
-  selectedMessengerName: null,
-  messengerSelectIndex: 0,
-  contacts: [],
-  selectedContact: null,
-  conversationMessages: [],
-  pendingText: "",
   audioContext: null,
   scriptProcessor: null,
   mediaStream: null,
+
+  // --- App UI state ---
+  appState: "startup",
+  pendingText: "",
   logoData: null,
   messengerIconData: {},
   messengerSelectBuilt: false,
@@ -28,7 +48,17 @@ export const S = {
   wakeLock: null,
   pageAbort: new AbortController(),
   displayRebuilt: false,
-  BUILD_VERSION: "v1.2.0",
+
+  // --- Messenger selection ---
+  availableMessengers: [],
+  selectedMessengerName: null,
+  messengerSelectIndex: 0,
+
+  // --- Active messenger session (created on select, null on switch) ---
+  // Shape depends on messenger type — see createChatSession / createFolderSession
+  session: null,
+
+  BUILD_VERSION: "v1.3.0",
 };
 
 // --- Wake lock ---
@@ -51,15 +81,15 @@ export async function requestWakeLock() {
 export function startConversationPolling() {
   stopConversationPolling();
   S.conversationPollTimer = setInterval(async () => {
-    if (S.appState !== "conversation" || !S.selectedContact) {
+    if (S.appState !== "conversation" || !S.session?.selectedContact) {
       stopConversationPolling();
       return;
     }
     try {
-      const entityId = S.selectedContact.username || S.selectedContact.id;
+      const entityId = S.session.selectedContact.username || S.session.selectedContact.id;
       const msgs = await fetchMessages(entityId);
       if (S.appState !== "conversation") return;
-      S.conversationMessages = msgs;
+      S.session.conversationMessages = msgs;
       if (S.isG2) showGlassesConversation();
       showBrowserConversation();
     } catch {}
@@ -92,20 +122,56 @@ export function selectMessenger(name) {
   }
 }
 
+// --- Settings ---
+
+export async function goToSettings() {
+  S.appState = "settings";
+  S.displayRebuilt = false;
+
+  hideBrowserMessengerList();
+  hideBrowserContacts();
+  hideBrowserConversation();
+  hideBrowserPreview();
+  hideBrowserFolderList();
+  hideBrowserMessageList();
+  hideBrowserMessageView();
+
+  setStatus("Settings");
+
+  if (S.isG2) {
+    rebuildGlassesDisplay("Configure in\nbrowser settings", true);
+  }
+
+  try {
+    const status = await fetchSettingsStatus();
+    showBrowserSettings(status);
+  } catch (e) {
+    log("Error loading settings: " + e.message);
+    setStatus("Error loading settings", "error");
+  }
+}
+
+export function leaveSettings() {
+  hideBrowserSettings();
+  goToMessengerSelect();
+}
+
 export async function goToMessengerSelect() {
   S.appState = "messengerSelect";
   S.selectedMessengerName = null;
-  S.selectedContact = null;
-  S.conversationMessages = [];
+  S.session = null;
   S.pendingText = "";
   S.displayRebuilt = false;
-  S.contacts = [];
   stopConversationPolling();
   requestWakeLock();
 
   hideBrowserContacts();
   hideBrowserConversation();
   hideBrowserPreview();
+  hideBrowserFolderList();
+  hideBrowserMessageList();
+  hideBrowserMessageView();
+  hideBrowserSettings();
 
   setStatus("Loading messengers...");
 
@@ -120,10 +186,9 @@ export async function goToMessengerSelect() {
   }
 
   if (S.availableMessengers.length === 0) {
-    const setupMsg = "No messengers configured.\n\nSet up in .env:\n\nTelegram:\n  TELEGRAM_API_ID\n  TELEGRAM_API_HASH\n\nSlack:\n  SLACK_USER_TOKEN";
-    setStatus("No messengers configured", "error");
-    if (S.isG2) rebuildGlassesDisplay(setupMsg);
-    showNoMessengersConfigured();
+    setStatus("No messengers configured");
+    if (S.isG2) rebuildGlassesDisplay("Configure in\nbrowser settings", true);
+    goToSettings();
     return;
   }
 
@@ -136,13 +201,13 @@ export async function goToMessengerSelect() {
   showBrowserMessengerList((name) => selectMessenger(name));
 }
 
+// --- Chat messenger navigation (Telegram, Slack) ---
+
 export async function goToContacts() {
+  S.session = createChatSession();
   S.appState = "contacts";
-  S.selectedContact = null;
-  S.conversationMessages = [];
   S.pendingText = "";
   S.displayRebuilt = false;
-  S.contacts = [];
   stopConversationPolling();
   requestWakeLock();
 
@@ -160,14 +225,14 @@ export async function goToContacts() {
         fetchContacts(),
         fetchLastRecipient(),
       ]);
-      S.contacts = fetchedContacts;
-      log(`Loaded ${S.contacts.length} contacts`);
+      S.session.contacts = fetchedContacts;
+      log(`Loaded ${S.session.contacts.length} contacts`);
 
       if (lastRecipient && lastRecipient.id) {
-        const idx = S.contacts.findIndex((c) => c.id === lastRecipient.id);
+        const idx = S.session.contacts.findIndex((c) => c.id === lastRecipient.id);
         if (idx > 0) {
-          const [contact] = S.contacts.splice(idx, 1);
-          S.contacts.unshift(contact);
+          const [contact] = S.session.contacts.splice(idx, 1);
+          S.session.contacts.unshift(contact);
           log(`Last recipient "${lastRecipient.name}" moved to top`);
         }
       }
@@ -184,7 +249,7 @@ export async function goToContacts() {
     }
   }
 
-  if (S.contacts.length === 0) {
+  if (S.session.contacts.length === 0) {
     setStatus("No contacts found", "error");
     rebuildGlassesDisplay("No contacts found");
     showBrowserContacts(() => {});
@@ -192,7 +257,7 @@ export async function goToContacts() {
   }
 
   setStatus("Select a contact");
-  log(`isG2=${S.isG2}, contacts=${S.contacts.length}, names=${S.contacts.slice(0,3).map(c=>c.name).join(",")}`);
+  log(`isG2=${S.isG2}, contacts=${S.session.contacts.length}, names=${S.session.contacts.slice(0,3).map(c=>c.name).join(",")}`);
 
   if (S.isG2) {
     await new Promise((r) => setTimeout(r, 150));
@@ -203,7 +268,7 @@ export async function goToContacts() {
 }
 
 export async function goToConversation(contact) {
-  S.selectedContact = contact;
+  S.session.selectedContact = contact;
   S.appState = "conversation";
   log(`Selected contact: ${contact.name}`);
   requestWakeLock();
@@ -221,8 +286,8 @@ export async function goToConversation(contact) {
 
     try {
       const entityId = contact.username || contact.id;
-      S.conversationMessages = await fetchMessages(entityId);
-      log(`Loaded ${S.conversationMessages.length} messages`);
+      S.session.conversationMessages = await fetchMessages(entityId);
+      log(`Loaded ${S.session.conversationMessages.length} messages`);
       loaded = true;
       break;
     } catch (e) {
@@ -237,7 +302,7 @@ export async function goToConversation(contact) {
     }
   }
   if (!loaded) {
-    S.conversationMessages = [];
+    S.session.conversationMessages = [];
   }
 
   setStatus(`Conversation with ${contact.name}`);
@@ -250,17 +315,17 @@ export async function goToConversation(contact) {
 }
 
 export async function refreshConversation() {
-  if (!S.selectedContact) return;
+  if (!S.session?.selectedContact) return;
   try {
-    const entityId = S.selectedContact.username || S.selectedContact.id;
-    S.conversationMessages = await fetchMessages(entityId);
-    log(`Refreshed conversation: ${S.conversationMessages.length} messages`);
+    const entityId = S.session.selectedContact.username || S.session.selectedContact.id;
+    S.session.conversationMessages = await fetchMessages(entityId);
+    log(`Refreshed conversation: ${S.session.conversationMessages.length} messages`);
   } catch (e) {
     log("Error refreshing messages: " + e.message);
   }
 
   S.appState = "conversation";
-  setStatus(`Conversation with ${S.selectedContact.name}`);
+  setStatus(`Conversation with ${S.session.selectedContact.name}`);
 
   if (S.isG2) {
     showGlassesConversation();
@@ -270,8 +335,143 @@ export async function refreshConversation() {
   startConversationPolling();
 }
 
+// --- Folder messenger navigation (Gmail) ---
+
+export async function goToFolderSelect() {
+  S.session = createFolderSession();
+  S.appState = "folderSelect";
+  S.displayRebuilt = false;
+  requestWakeLock();
+
+  hideBrowserMessengerList();
+  hideBrowserContacts();
+  hideBrowserConversation();
+  hideBrowserPreview();
+  hideBrowserMessageList();
+  hideBrowserMessageView();
+
+  setStatus("Loading folders...");
+  rebuildGlassesDisplay("Loading folders...", true);
+
+  try {
+    S.session.folders = await fetchFolders();
+    log(`Loaded ${S.session.folders.length} folders`);
+  } catch (e) {
+    log("Error loading folders: " + e.message);
+    setStatus("Connection failed", "error");
+    rebuildGlassesDisplay("Connection failed.\nReturning...");
+    setTimeout(() => goToMessengerSelect(), 3000);
+    return;
+  }
+
+  if (S.session.folders.length === 0) {
+    setStatus("No folders found", "error");
+    rebuildGlassesDisplay("No folders found");
+    return;
+  }
+
+  setStatus("Select a folder");
+
+  if (S.isG2) {
+    await new Promise((r) => setTimeout(r, 150));
+    showGlassesFolderList();
+  }
+  showBrowserFolderList((folder) => goToMessageList(folder));
+}
+
+export async function goToMessageList(folder) {
+  S.session.selectedFolder = folder;
+  S.session.selectedMessage = null;
+  S.appState = "messageList";
+  S.displayRebuilt = false;
+  requestWakeLock();
+
+  hideBrowserFolderList();
+  hideBrowserMessageView();
+  hideBrowserPreview();
+
+  setStatus(`Loading ${folder.name}...`);
+  rebuildGlassesDisplay(`Loading ${folder.name}...`, true);
+
+  try {
+    S.session.folderMessages = await fetchFolderMessages(folder.id, 10);
+    log(`Loaded ${S.session.folderMessages.length} messages from ${folder.name}`);
+  } catch (e) {
+    log("Error loading messages: " + e.message);
+    setStatus("Connection failed", "error");
+    rebuildGlassesDisplay("Connection failed.\nReturning...");
+    setTimeout(() => goToFolderSelect(), 3000);
+    return;
+  }
+
+  if (S.session.folderMessages.length === 0) {
+    setStatus("No messages", "error");
+    rebuildGlassesDisplay("No messages in folder");
+    showBrowserMessageList(() => {});
+    return;
+  }
+
+  setStatus(`${folder.name} (${S.session.folderMessages.length})`);
+
+  if (S.isG2) {
+    await new Promise((r) => setTimeout(r, 150));
+    showGlassesMessageList();
+  }
+  showBrowserMessageList((msg) => goToMessageView(msg));
+}
+
+export async function goToMessageView(folderMessage) {
+  S.session.selectedMessage = folderMessage;
+  S.appState = "messageView";
+  S.displayRebuilt = false;
+  requestWakeLock();
+
+  hideBrowserMessageList();
+  hideBrowserPreview();
+
+  setStatus("Loading message...");
+  rebuildGlassesDisplay("Loading message...", true);
+
+  try {
+    const fullMsg = await fetchFolderMessage(S.session.selectedFolder.id, folderMessage.id);
+    S.session.selectedMessage = fullMsg;
+  } catch (e) {
+    log("Error loading message: " + e.message);
+  }
+
+  setStatus(`From: ${S.session.selectedMessage.from}`);
+
+  if (S.isG2) {
+    showGlassesMessageView();
+  }
+  showBrowserMessageView();
+}
+
+// --- Shared actions (work for both session types) ---
+
 export function sendPendingMessage() {
-  if (!S.pendingText || !S.selectedContact) return;
+  if (!S.pendingText) return;
+
+  // Folder messenger: reply to message
+  if (S.session?.type === "folder" && S.session.selectedMessage) {
+    S.appState = "processing";
+    setStatus("Sending reply...");
+    if (S.isG2) {
+      S.displayRebuilt = false;
+      rebuildGlassesDisplay("Sending reply...");
+    }
+    if (S.ws && S.ws.readyState === WebSocket.OPEN) {
+      S.ws.send(JSON.stringify({
+        type: "reply",
+        text: S.pendingText,
+        messageId: S.session.selectedMessage.id,
+      }));
+    }
+    return;
+  }
+
+  // Chat messenger: send to contact
+  if (!S.session?.selectedContact) return;
 
   S.appState = "processing";
   setStatus("Sending...");
@@ -280,15 +480,15 @@ export function sendPendingMessage() {
     rebuildGlassesDisplay("Sending...");
   }
 
-  const recipient = S.selectedContact.username || S.selectedContact.id;
+  const recipient = S.session.selectedContact.username || S.session.selectedContact.id;
   if (S.ws && S.ws.readyState === WebSocket.OPEN) {
     S.ws.send(JSON.stringify({
       type: "send",
       text: S.pendingText,
       recipient,
-      recipientId: S.selectedContact.id,
-      recipientName: S.selectedContact.name,
-      recipientUsername: S.selectedContact.username,
+      recipientId: S.session.selectedContact.id,
+      recipientName: S.session.selectedContact.name,
+      recipientUsername: S.session.selectedContact.username,
     }));
   }
 }
@@ -297,7 +497,11 @@ export async function cancelPreview() {
   log("Preview cancelled");
   S.pendingText = "";
   hideBrowserPreview();
-  await refreshConversation();
+  if (S.session?.type === "folder" && S.session.selectedMessage) {
+    goToMessageView(S.session.selectedMessage);
+  } else {
+    await refreshConversation();
+  }
 }
 
 // --- Handle messages from server via WebSocket ---
@@ -306,7 +510,11 @@ export function handleServerMessage(msg) {
     const displayName = msg.name;
     log(`Messenger selected: ${displayName}`);
     updateAppTitle(`Even Bridge → ${displayName}`);
-    goToContacts();
+    if (msg.hasFolders) {
+      goToFolderSelect();
+    } else {
+      goToContacts();
+    }
   } else if (msg.type === "status") {
     setStatus(msg.text);
     if (S.isG2 && S.displayRebuilt) {
@@ -326,12 +534,21 @@ export function handleServerMessage(msg) {
     updateRecordButton("hidden");
     showBrowserPreview(msg.text);
   } else if (msg.type === "sent") {
-    const contactName = S.selectedContact?.name || "Unknown";
-    saveMessage(msg.text, contactName);
-    renderHistory();
-    log(`Sent to ${contactName}: ${msg.text}`);
-    S.pendingText = "";
-    refreshConversation();
+    if (S.session?.type === "folder" && S.session.selectedMessage) {
+      const senderName = S.session.selectedMessage.from || "Unknown";
+      saveMessage(msg.text, senderName);
+      renderHistory();
+      log(`Reply sent to ${senderName}: ${msg.text}`);
+      S.pendingText = "";
+      goToMessageView(S.session.selectedMessage);
+    } else {
+      const contactName = S.session?.selectedContact?.name || "Unknown";
+      saveMessage(msg.text, contactName);
+      renderHistory();
+      log(`Sent to ${contactName}: ${msg.text}`);
+      S.pendingText = "";
+      refreshConversation();
+    }
   } else if (msg.type === "error") {
     setStatus(msg.text, "error");
     log("Error: " + msg.text);
@@ -342,7 +559,17 @@ export function handleServerMessage(msg) {
     }
 
     setTimeout(() => {
-      if (S.selectedContact) {
+      if (S.session?.type === "folder") {
+        if (S.session.selectedMessage) {
+          goToMessageView(S.session.selectedMessage);
+        } else if (S.session.selectedFolder) {
+          goToMessageList(S.session.selectedFolder);
+        } else if (S.selectedMessengerName) {
+          goToFolderSelect();
+        } else {
+          goToMessengerSelect();
+        }
+      } else if (S.session?.selectedContact) {
         refreshConversation();
       } else if (S.selectedMessengerName) {
         goToContacts();

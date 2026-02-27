@@ -33,7 +33,7 @@ export function attachWebSocket(server: Server, ctx: WebSocketContext): void {
             ws.send(JSON.stringify({ type: "status", text: `Connecting to ${displayName}...` }));
             await messenger.init();
             ctx.setActiveMessenger(messenger);
-            ws.send(JSON.stringify({ type: "messenger-selected", name: messenger.name }));
+            ws.send(JSON.stringify({ type: "messenger-selected", name: messenger.name, hasFolders: !!messenger.hasFolders }));
             console.log(`Messenger selected: ${messenger.name}`);
           } catch (err) {
             console.error(`Error initializing ${name}:`, err);
@@ -99,6 +99,32 @@ export function attachWebSocket(server: Server, ctx: WebSocketContext): void {
           } catch (err) {
             console.error("Send error:", err);
             ws.send(JSON.stringify({ type: "error", text: "Error sending message" }));
+          }
+        } else if (parsed && parsed.type === "reply") {
+          const { text, messageId } = parsed;
+          if (!text || !messageId) {
+            ws.send(JSON.stringify({ type: "error", text: "Missing text or messageId" }));
+            return;
+          }
+
+          const activeMessenger = ctx.getActiveMessenger();
+          if (!activeMessenger) {
+            ws.send(JSON.stringify({ type: "error", text: "No messenger selected" }));
+            return;
+          }
+
+          if (!activeMessenger.replyToMessage) {
+            ws.send(JSON.stringify({ type: "error", text: "Messenger does not support replies" }));
+            return;
+          }
+
+          try {
+            await activeMessenger.replyToMessage(messageId, text);
+            ws.send(JSON.stringify({ type: "sent", text }));
+            console.log(`Replied to ${messageId} successfully`);
+          } catch (err) {
+            console.error("Reply error:", err);
+            ws.send(JSON.stringify({ type: "error", text: "Error sending reply" }));
           }
         }
       } else {

@@ -56,4 +56,5 @@ See `.env.example` for template.
 See `.claude/skills/` for detailed domain references:
 - `g2-sdk` — G2 glasses SDK: display, events, audio, containers, simulator
 - `design-system` — UI design tokens, color system, typography, component patterns
+- `qr` — Generate QR code PNG for the Even Bridge ngrok tunnel
 - `express-app` — App architecture: Express server patterns, frontend ES module structure, state management

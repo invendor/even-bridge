@@ -1,10 +1,10 @@
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
-import { readFileSync, writeFileSync, existsSync } from "fs";
-import * as readline from "readline";
+import { readFileSync, existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { Messenger, Contact, Message } from "./types.js";
+import { getCredential } from "../services/settings.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,36 +18,26 @@ function loadSession(): string {
   return "";
 }
 
-function saveSession(session: string): void {
-  writeFileSync(SESSION_FILE, session);
-}
-
-function prompt(question: string): Promise<string> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer);
-    });
-  });
-}
-
 export function isTelegramConfigured(): boolean {
-  const apiId = parseInt(process.env.TELEGRAM_API_ID || "0", 10);
-  const apiHash = process.env.TELEGRAM_API_HASH;
+  const apiId = parseInt(getCredential("telegram.apiId") || "0", 10);
+  const apiHash = getCredential("telegram.apiHash");
   return !!(apiId && apiHash);
 }
 
 export function createTelegramMessenger(): Messenger {
-  const apiId = parseInt(process.env.TELEGRAM_API_ID || "0", 10);
-  const apiHash = process.env.TELEGRAM_API_HASH;
+  const apiId = parseInt(getCredential("telegram.apiId") || "0", 10);
+  const apiHash = getCredential("telegram.apiHash");
 
   if (!apiId || !apiHash) {
-    console.error("Missing TELEGRAM_API_ID or TELEGRAM_API_HASH");
-    process.exit(1);
+    throw new Error("Missing Telegram API credentials");
   }
 
-  const stringSession = new StringSession(loadSession());
+  const sessionStr = loadSession();
+  if (!sessionStr) {
+    throw new Error("Telegram not authenticated. Please authenticate via Settings.");
+  }
+
+  const stringSession = new StringSession(sessionStr);
   const client = new TelegramClient(stringSession, apiId, apiHash, {
     connectionRetries: 5,
   });
@@ -56,16 +46,8 @@ export function createTelegramMessenger(): Messenger {
     name: "Telegram",
 
     async init() {
-      await client.start({
-        phoneNumber: () => prompt("Enter your phone number: "),
-        password: () => prompt("Enter your 2FA password (if any): "),
-        phoneCode: () => prompt("Enter the code you received: "),
-        onError: (err) => console.error("Telegram auth error:", err),
-      });
-
-      const sessionStr = client.session.save() as unknown as string;
-      saveSession(sessionStr);
-      console.log("Telegram client authenticated and session saved");
+      await client.connect();
+      console.log("Telegram client connected with saved session");
     },
 
     async getContacts(): Promise<Contact[]> {

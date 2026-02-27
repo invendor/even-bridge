@@ -138,7 +138,7 @@ export async function showGlassesMessengerSelect() {
       });
     }
 
-    const iconYTweak = { telegram: -4, slack: 9 };
+    const iconYTweak = { telegram: -4, slack: 9, gmail: 0 };
     S.availableMessengers.forEach((name, i) => {
       if (S.messengerIconData[name]) {
         const tweak = iconYTweak[name] || 0;
@@ -216,13 +216,13 @@ export function updateGlassesMessengerSelection() {
 }
 
 export function showGlassesContactList() {
-  if (!S.bridge || S.contacts.length === 0) {
-    log(`showGlassesContactList skipped: bridge=${!!S.bridge}, contacts=${S.contacts.length}`);
+  if (!S.bridge || !S.session?.contacts?.length) {
+    log(`showGlassesContactList skipped: bridge=${!!S.bridge}, contacts=${S.session?.contacts?.length ?? 0}`);
     return;
   }
   try {
     const hintHeight = 30;
-    const names = S.contacts.slice(0, 15).map((c) => sanitizeG2Name(c.name));
+    const names = S.session.contacts.slice(0, 15).map((c) => sanitizeG2Name(c.name));
     log(`G2 contact list: ${names.length} names, first="${names[0]}"`);
     const listPayload = {
       containerTotalNum: 2,
@@ -271,6 +271,141 @@ export function showGlassesContactList() {
   } catch (e) {
     log("Contact list display error: " + (e?.message || e));
     log("Error stack: " + (e?.stack || "none"));
+  }
+}
+
+export function showGlassesFolderList() {
+  if (!S.bridge || !S.session?.folders?.length) return;
+  try {
+    const hintHeight = 30;
+    const names = S.session.folders.slice(0, 15).map((f) => {
+      const unread = f.unreadCount > 0 ? ` (${f.unreadCount})` : "";
+      return sanitizeG2Name(f.name + unread);
+    });
+
+    S.bridge.rebuildPageContainer({
+      containerTotalNum: 2,
+      listObject: [
+        {
+          containerID: 1,
+          containerName: "folders",
+          xPosition: 0,
+          yPosition: 0,
+          width: 576,
+          height: 288 - hintHeight,
+          isEventCapture: 1,
+          borderWidth: 1,
+          borderColor: 13,
+          borderRdaius: 6,
+          paddingLength: 5,
+          itemContainer: {
+            itemCount: names.length,
+            itemWidth: 560,
+            isItemSelectBorderEn: 1,
+            itemName: names,
+          },
+        },
+      ],
+      textObject: [
+        {
+          containerID: 2,
+          containerName: "hint",
+          xPosition: 0,
+          yPosition: 288 - hintHeight,
+          width: 576,
+          height: hintHeight,
+          isEventCapture: 0,
+          borderWidth: 0,
+          borderColor: 0,
+          borderRdaius: 0,
+          paddingLength: 2,
+          content: "Double tap to go back",
+        },
+      ],
+    });
+    log("Folder list displayed on glasses");
+  } catch (e) {
+    log("Folder list display error: " + (e?.message || e));
+  }
+}
+
+export function showGlassesMessageList() {
+  if (!S.bridge || !S.session?.folderMessages?.length) return;
+  try {
+    const hintHeight = 30;
+    const names = S.session.folderMessages.slice(0, 15).map((m) => {
+      const unreadMark = m.isRead ? "" : "* ";
+      const label = `${unreadMark}${m.from}: ${m.subject}`;
+      return sanitizeG2Name(label);
+    });
+
+    S.bridge.rebuildPageContainer({
+      containerTotalNum: 2,
+      listObject: [
+        {
+          containerID: 1,
+          containerName: "emails",
+          xPosition: 0,
+          yPosition: 0,
+          width: 576,
+          height: 288 - hintHeight,
+          isEventCapture: 1,
+          borderWidth: 1,
+          borderColor: 13,
+          borderRdaius: 6,
+          paddingLength: 5,
+          itemContainer: {
+            itemCount: names.length,
+            itemWidth: 560,
+            isItemSelectBorderEn: 1,
+            itemName: names,
+          },
+        },
+      ],
+      textObject: [
+        {
+          containerID: 2,
+          containerName: "hint",
+          xPosition: 0,
+          yPosition: 288 - hintHeight,
+          width: 576,
+          height: hintHeight,
+          isEventCapture: 0,
+          borderWidth: 0,
+          borderColor: 0,
+          borderRdaius: 0,
+          paddingLength: 2,
+          content: "Double tap to go back",
+        },
+      ],
+    });
+    log("Message list displayed on glasses");
+  } catch (e) {
+    log("Message list display error: " + (e?.message || e));
+  }
+}
+
+export function showGlassesMessageView() {
+  if (!S.bridge || !S.session?.selectedMessage) return;
+  try {
+    const m = S.session.selectedMessage;
+    const divider = String.fromCharCode(9472).repeat(28);
+    const bodyPreview = (m.body || m.snippet || "").slice(0, 300);
+
+    const lines = [
+      `From: ${(m.from || "").slice(0, 30)}`,
+      `Subject: ${(m.subject || "").slice(0, 40)}`,
+      divider,
+      bodyPreview,
+      divider,
+      "Double tap to reply | Swipe to go back",
+    ];
+
+    S.displayRebuilt = false;
+    rebuildGlassesDisplay(lines.join("\n"));
+    log("Message view displayed on glasses");
+  } catch (e) {
+    log("Message view display error: " + (e?.message || e));
   }
 }
 
@@ -329,11 +464,11 @@ export function showGlassesConversation(forceRebuild = false) {
   if (!S.bridge) return;
   try {
     const divider = String.fromCharCode(9472).repeat(28);
-    let lines = [`To: ${S.selectedContact.name}`, divider];
+    let lines = [`To: ${S.session.selectedContact.name}`, divider];
 
-    const msgs = [...S.conversationMessages].reverse();
+    const msgs = [...S.session.conversationMessages].reverse();
     for (const m of msgs) {
-      const sender = m.out ? "Me" : (m.senderName || S.selectedContact.name);
+      const sender = m.out ? "Me" : (m.senderName || S.session.selectedContact.name);
       const time = formatTime(m.date);
       const text = (m.text || "").slice(0, 80);
       lines.push(`${sender} (${time}): ${text}`);

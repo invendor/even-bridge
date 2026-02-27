@@ -1,6 +1,18 @@
 import OpenAI from "openai";
+import { getCredential } from "./settings.js";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  const apiKey = getCredential("openai.apiKey");
+  if (!apiKey) {
+    throw new Error("OpenAI API key not configured. Add it in Settings.");
+  }
+  if (!openai) {
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+}
 
 function pcmToWav(pcmData: Buffer): Buffer {
   const sampleRate = 16000;
@@ -35,7 +47,8 @@ function pcmToWav(pcmData: Buffer): Buffer {
 export async function transcribeAudio(pcmBuffer: Buffer): Promise<string> {
   const wavBuffer = pcmToWav(pcmBuffer);
 
-  const response = await openai.audio.transcriptions.create({
+  const client = getOpenAI();
+  const response = await client.audio.transcriptions.create({
     model: "whisper-1",
     file: new File(
       [wavBuffer.buffer.slice(wavBuffer.byteOffset, wavBuffer.byteOffset + wavBuffer.byteLength)] as BlobPart[],

@@ -5,11 +5,6 @@ import app, { getActiveMessenger, setActiveMessenger } from "./app.js";
 import { attachWebSocket } from "./websocket.js";
 import { loadLastRecipient } from "./services/lastRecipient.js";
 
-if (!process.env.OPENAI_API_KEY) {
-  console.error("Missing required env var: OPENAI_API_KEY");
-  process.exit(1);
-}
-
 const PORT = parseInt(process.env.PORT || "3000", 10);
 
 const server = createServer(app);
@@ -21,7 +16,7 @@ async function main() {
 
   if (available.length === 0) {
     console.warn(
-      "No messenger credentials configured. Set TELEGRAM_API_ID+TELEGRAM_API_HASH or SLACK_USER_TOKEN in .env"
+      "No messenger credentials configured. Open the app in a browser to configure via Settings."
     );
   }
 
