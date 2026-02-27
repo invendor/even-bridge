@@ -1,7 +1,7 @@
 {
   "name": "even-bridge",
   "version": "1.3.0",
-  "description": "Even G2 glasses speech-to-messenger bridge",
+  "description": "Even G2 glasses speech-to-messenger bridge (Telegram, Slack, Gmail)",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",

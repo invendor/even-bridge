@@ -1,6 +1,6 @@
 # Even Bridge
 
-Speech-to-messenger plugin for Even Realities G2 smart glasses. Records speech via G2 mic, transcribes with OpenAI Whisper, sends to Telegram or Slack.
+Speech-to-messenger plugin for Even Realities G2 smart glasses. Records speech via G2 mic, transcribes with OpenAI Whisper, sends to Telegram, Slack, or Gmail.
 
 ## Commands
 
@@ -19,7 +19,7 @@ npm start         # run compiled output
                                                     [OpenAI Whisper API]
                                                            |
                                                     [Messenger API]
-                                                    (Telegram / Slack)
+                                              (Telegram / Slack / Gmail)
 ```
 
 - **Server**: Express + WebSocket (`ws`) — `src/server.ts` (composition root), `src/routes/`, `src/services/`, `src/websocket.ts`
@@ -37,11 +37,13 @@ npm start         # run compiled output
 
 ## Environment
 
-Requires `.env` with `OPENAI_API_KEY` and at least one messenger:
-- Telegram: `TELEGRAM_API_ID` + `TELEGRAM_API_HASH`
-- Slack: `SLACK_USER_TOKEN`
+Credentials are managed via the browser Settings UI (stored in `settings.json`), with env var fallback for backwards compatibility. `.env` is used only for app-level config like `PORT`.
 
-See `.env.example` for template.
+Requires at least one messenger configured in Settings:
+- **OpenAI**: API key (required for speech-to-text)
+- **Telegram**: API ID + API Hash + phone auth
+- **Slack**: User OAuth Token
+- **Gmail**: Email address + App password
 
 ## G2 Gotchas
 

@@ -2,7 +2,7 @@
 
 Speech-to-Messenger plugin for Even G2 smart glasses.
 
-Record speech, which gets transcribed via OpenAI Whisper and sent to your messenger chat. Supports **Telegram** and **Slack**.
+Record speech, which gets transcribed via OpenAI Whisper and sent to your messenger chat. Supports **Telegram**, **Slack**, and **Gmail**.
 
 ## Screenshots
 
@@ -33,7 +33,7 @@ Record speech, which gets transcribed via OpenAI Whisper and sent to your messen
                                                     [OpenAI Whisper API]
                                                            |
                                                     [Messenger API]
-                                                    (Telegram / Slack)
+                                              (Telegram / Slack / Gmail)
 ```
 
 The app uses the G2 web-proxy model: the server hosts a web page, the Even App (iOS or Android) loads it in a WebView, and the glasses act as a BLE display + input peripheral. The SDK injects `EvenAppBridge` into the WebView for JavaScript-to-native communication.
@@ -41,7 +41,7 @@ The app uses the G2 web-proxy model: the server hosts a web page, the Even App (
 ## How It Works
 
 1. **Tap to start** — glasses display startup screen with the Even Bridge logo.
-2. **Select messenger** — choose between Telegram, Slack, or any other configured messenger. Only messengers with valid credentials in `.env` are shown.
+2. **Select messenger** — choose between Telegram, Slack, Gmail, or any other configured messenger. Only messengers configured in Settings are shown.
 3. **Select contact** — scroll through your contacts and tap to select who to send the message to. The last contacted person is remembered.
 4. **Double tap to record** — the G2 microphone opens (`bridge.audioControl(true)`) and streams raw PCM audio (16kHz, 16-bit, mono) over WebSocket to the server.
 5. **Tap to stop** — another tap closes the mic, the server converts accumulated PCM to WAV and sends it to OpenAI Whisper for transcription.
@@ -63,26 +63,30 @@ The app uses the G2 web-proxy model: the server hosts a web page, the Even App (
 
 ```bash
 npm install
-cp .env.example .env
+npm run dev
 ```
 
-Fill in `.env`:
+Open `http://localhost:3000` in your browser. On first launch you'll be redirected to Settings (gear icon in the header) to configure your credentials.
 
-| Variable | Description |
+### Settings UI
+
+All credentials are managed through the browser-based Settings UI. No need to edit `.env` — it's only used for app-level config like `PORT`.
+
+| Setting | Where to get it |
 |---|---|
-| `OPENAI_API_KEY` | Your OpenAI API key from [platform.openai.com](https://platform.openai.com) |
-| `TELEGRAM_API_ID` | *(optional)* Your API ID from [my.telegram.org](https://my.telegram.org) |
-| `TELEGRAM_API_HASH` | *(optional)* Your API Hash from [my.telegram.org](https://my.telegram.org) |
-| `SLACK_USER_TOKEN` | *(optional)* Your Slack User Token (see [Slack Setup](#slack-setup)) |
-| `PORT` | Server port (default: 3000) |
+| **OpenAI API Key** | [platform.openai.com](https://platform.openai.com) — required for speech-to-text |
+| **Telegram API ID & Hash** | [my.telegram.org](https://my.telegram.org) — create an app to get credentials |
+| **Slack User Token** | [api.slack.com/apps](https://api.slack.com/apps) — see [Slack Setup](#slack-setup) |
+| **Gmail Address & App Password** | Google Account > Security > App passwords — see [Gmail Setup](#gmail-setup) |
 
-You need at least one messenger configured (Telegram or Slack). You can configure both — the app will let you choose at startup.
+You need at least one messenger configured. You can configure all three — the app will let you choose at startup.
 
 ### Telegram Setup
 
 1. Go to [my.telegram.org](https://my.telegram.org) and create an app to get your API ID and Hash.
-2. Set `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` in `.env`.
-3. On first run, you'll be prompted in the terminal to enter your phone number and a verification code. After that, the session is saved to `telegram-session.txt` and you won't need to re-authenticate.
+2. Enter them in Settings > Telegram and click Save.
+3. Click **Authenticate**, enter your phone number, then the verification code sent to your Telegram app. If you have 2FA enabled, you'll be prompted for your password.
+4. After authentication, the session is saved and you won't need to re-authenticate.
 
 ### Slack Setup
 
@@ -100,9 +104,18 @@ You need at least one messenger configured (Telegram or Slack). You can configur
    - `mpim:read` — list group DMs
    - `users:read` — resolve user display names
 4. Click **Install to Workspace** and authorize.
-5. Copy the **User OAuth Token** (`xoxp-...`) and set it as `SLACK_USER_TOKEN` in `.env`.
+5. Copy the **User OAuth Token** (`xoxp-...`) and paste it in Settings > Slack.
 
 Messages are sent as your user account, just like Telegram.
+
+### Gmail Setup
+
+1. Enable **2-Step Verification** on your Google Account.
+2. Go to [Google Account > Security > App passwords](https://myaccount.google.com/apppasswords).
+3. Generate a new app password (select "Mail" or "Other").
+4. Enter your Gmail address and the 16-character app password in Settings > Gmail.
+
+Gmail uses IMAP for reading (folders, messages) and SMTP for sending replies.
 
 ## Run
 
@@ -132,18 +145,40 @@ CLAUDE.md                              Project instructions for AI agents
     g2-sdk/SKILL.md                    G2 glasses SDK reference (auto-triggered)
     design-system/SKILL.md             UI design tokens & components (auto-triggered)
 src/
-  server.ts                            Express + WebSocket + Whisper + messenger routing
+  server.ts                            Composition root — HTTP + WebSocket server
+  app.ts                               Express app setup and route registration
+  websocket.ts                         WebSocket message handling
+  routes/
+    api.ts                             Main API routes (messengers, contacts, messages)
+    settings.ts                        Settings API (credentials CRUD, Telegram auth)
+  services/
+    audio.ts                           OpenAI Whisper transcription (lazy init)
+    settings.ts                        Settings storage (settings.json + env fallback)
+    telegramAuth.ts                    Telegram web-based auth state machine
+    lastRecipient.ts                   Last contacted person persistence
   messengers/
     types.ts                           Messenger interface and shared types
     telegram.ts                        Telegram implementation (GramJS)
     slack.ts                           Slack implementation (@slack/web-api)
+    gmail.ts                           Gmail implementation (IMAP + SMTP)
     index.ts                           Messenger factory and availability check
   public/
-    index.html                         G2 glasses frontend + browser fallback UI
-    logo.png                           Brand logo image
-    logo-data.json                     Logo encoded as greyscale pixel data for G2 display
-    telegram-icon-data.json            Telegram icon encoded for G2 display
-    slack-icon-data.json               Slack icon encoded for G2 display
+    index.html                         Frontend UI (CSS + HTML shell + Settings)
+    js/
+      main.js                          App initialization and event wiring
+      state.js                         State machine and navigation
+      api.js                           HTTP API client functions
+      recording.js                     Audio recording (G2 mic + browser fallback)
+      ws.js                            WebSocket client
+      history.js                       Message history
+      utils.js                         Shared utilities
+      ui/
+        browser.js                     Browser DOM rendering
+        glasses.js                     G2 glasses display rendering
+    logo-data.json                     Logo encoded for G2 display
+    telegram-icon-data.json            Telegram icon for G2 display
+    slack-icon-data.json               Slack icon for G2 display
+    gmail-icon-data.json               Gmail icon for G2 display
   scripts/
     pngEncoder.ts                      PNG encoder with CRC32/Adler32 checksums
     generateSlackIcon.ts               Slack icon generator
@@ -154,5 +189,6 @@ src/
 - **Server** — Express, WebSocket (`ws`), TypeScript
 - **Speech-to-text** — OpenAI Whisper API
 - **Telegram** — GramJS (Telegram Client API, sends as your user account)
-- **Slack** — @slack/web-api (Slack Bot API)
+- **Slack** — @slack/web-api (Slack Web API, sends as your user account)
+- **Gmail** — imapflow (IMAP) + nodemailer (SMTP)
 - **G2 SDK** — `@evenrealities/even_hub_sdk`
