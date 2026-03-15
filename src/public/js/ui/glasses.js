@@ -220,14 +220,15 @@ export function updateGlassesMessengerSelection() {
 }
 
 export function showGlassesContactList() {
-  if (!S.bridge || !S.session?.contacts?.length) {
-    log(`showGlassesContactList skipped: bridge=${!!S.bridge}, contacts=${S.session?.contacts?.length ?? 0}`);
-    return;
-  }
+  if (!S.bridge || !S.session?.contacts?.length) return;
   try {
-    const names = S.session.contacts.slice(0, 15).map((c) => sanitizeG2Name(c.name));
-    log(`G2 contact list: ${names.length} names, first="${names[0]}"`);
-    const listPayload = {
+    // G2 rebuildPageContainer has ~1000 char total limit — cap names to fit
+    const names = S.session.contacts.slice(0, 15).map((c) =>
+      sanitizeG2Name(c.name).slice(0, 35)
+    );
+    log(`G2 contact list: ${names.length} names`);
+
+    S.bridge.rebuildPageContainer({
       containerTotalNum: 1,
       listObject: [
         {
@@ -250,14 +251,10 @@ export function showGlassesContactList() {
           },
         },
       ],
-    };
-    log(`Sending rebuildPageContainer with list (${JSON.stringify(names).slice(0, 100)})`);
-    const result = S.bridge.rebuildPageContainer(listPayload);
-    log(`rebuildPageContainer result: ${JSON.stringify(result)}`);
+    });
     log("Contact list displayed on glasses");
   } catch (e) {
     log("Contact list display error: " + (e?.message || e));
-    log("Error stack: " + (e?.stack || "none"));
   }
 }
 
@@ -299,16 +296,19 @@ export function showGlassesFolderList() {
   }
 }
 
-export function showGlassesMessageList() {
+export async function showGlassesMessageList() {
   if (!S.bridge || !S.session?.folderMessages?.length) return;
   try {
+    // G2 rebuildPageContainer has ~1000 char limit across all itemNames
+    const maxPerItem = 35;
     const names = S.session.folderMessages.slice(0, 10).map((m) => {
       const unreadMark = m.isRead ? "" : "* ";
-      const label = `${unreadMark}${m.from}: ${m.subject}`;
-      return sanitizeG2Name(label);
+      const from = (m.from || "").split("@")[0].slice(0, 12);
+      const subj = (m.subject || "(no subject)").slice(0, maxPerItem - from.length - 4);
+      return `${unreadMark}${from}: ${subj}`;
     });
 
-    S.bridge.rebuildPageContainer({
+    await S.bridge.rebuildPageContainer({
       containerTotalNum: 1,
       listObject: [
         {
@@ -334,7 +334,7 @@ export function showGlassesMessageList() {
     });
     log("Message list displayed on glasses");
   } catch (e) {
-    log("Message list display error: " + (e?.message || e));
+    log("Message list display ERROR: " + (e?.message || e));
   }
 }
 
@@ -418,7 +418,7 @@ export function updateGlassesMessageViewPage() {
   }
 }
 
-export function rebuildGlassesDisplay(text, centered = false) {
+export async function rebuildGlassesDisplay(text, centered = false) {
   if (!S.bridge) return;
   try {
     // Center each line with calibrated space-padding for G2 font
@@ -436,7 +436,7 @@ export function rebuildGlassesDisplay(text, centered = false) {
       } else {
         y = 0; cH = 288;
       }
-      S.bridge.rebuildPageContainer({
+      await S.bridge.rebuildPageContainer({
         containerTotalNum: 1,
         textObject: [
           {
@@ -457,7 +457,7 @@ export function rebuildGlassesDisplay(text, centered = false) {
       });
       S.displayRebuilt = true;
     } else {
-      S.bridge.textContainerUpgrade({
+      await S.bridge.textContainerUpgrade({
         containerID: 1,
         containerName: "main",
         content: content,

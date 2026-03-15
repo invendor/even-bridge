@@ -62,7 +62,7 @@ export const S = {
   // Shape depends on messenger type — see createChatSession / createFolderSession
   session: null,
 
-  BUILD_VERSION: "v1.3.3",
+  BUILD_VERSION: "v1.3.4",
 };
 
 // --- Wake lock ---
@@ -412,22 +412,23 @@ export async function goToMessageList(folder) {
   hideBrowserPreview();
 
   setStatus(`Loading ${folder.name}...`);
-  rebuildGlassesDisplay(`Loading ${folder.name}...`, true);
+  await rebuildGlassesDisplay(`Loading ${folder.name}...`, true);
 
   try {
     S.session.folderMessages = await fetchFolderMessages(folder.id, 10);
-    log(`Loaded ${S.session.folderMessages.length} messages from ${folder.name}`);
   } catch (e) {
     log("Error loading messages: " + e.message);
     setStatus("Connection failed", "error");
-    rebuildGlassesDisplay("Connection failed.\nReturning...", true);
+    S.displayRebuilt = false;
+    await rebuildGlassesDisplay("Connection failed.\nReturning...", true);
     setTimeout(() => goToFolderSelect(), 3000);
     return;
   }
 
   if (S.session.folderMessages.length === 0) {
     setStatus("No messages", "error");
-    rebuildGlassesDisplay("No messages in folder", true);
+    S.displayRebuilt = false;
+    await rebuildGlassesDisplay("No messages in folder", true);
     showBrowserMessageList(() => {});
     return;
   }
@@ -435,8 +436,9 @@ export async function goToMessageList(folder) {
   setStatus(`${folder.name} (${S.session.folderMessages.length})`);
 
   if (S.isG2) {
+    S.displayRebuilt = false;
     await new Promise((r) => setTimeout(r, 150));
-    showGlassesMessageList();
+    await showGlassesMessageList();
   }
   showBrowserMessageList((msg) => goToMessageView(msg));
 }
@@ -463,6 +465,7 @@ export async function goToMessageView(folderMessage) {
   setStatus(`From: ${S.session.selectedMessage.from}`);
 
   if (S.isG2) {
+    S.displayRebuilt = false;
     showGlassesMessageView();
   }
   showBrowserMessageView();

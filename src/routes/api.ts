@@ -55,7 +55,7 @@ export function createApiRouter(getActiveMessenger: () => Messenger | null): Rou
     }
   });
 
-  router.get("/folders/:folderId/messages", async (req, res) => {
+  router.get("/folder-messages", async (req, res) => {
     try {
       const messenger = getActiveMessenger();
       if (!messenger) {
@@ -66,9 +66,14 @@ export function createApiRouter(getActiveMessenger: () => Messenger | null): Rou
         res.status(400).json({ error: "Messenger does not support folder messages" });
         return;
       }
+      const folderId = req.query.folderId as string;
+      if (!folderId) {
+        res.status(400).json({ error: "Missing folderId" });
+        return;
+      }
       const limit = parseInt(req.query.limit as string) || 10;
       console.time("api:folder-messages");
-      const messages = await messenger.getFolderMessages(decodeURIComponent(req.params.folderId), limit);
+      const messages = await messenger.getFolderMessages(folderId, limit);
       console.timeEnd("api:folder-messages");
       res.json(messages);
     } catch (err) {
@@ -77,7 +82,7 @@ export function createApiRouter(getActiveMessenger: () => Messenger | null): Rou
     }
   });
 
-  router.get("/folders/:folderId/messages/:messageId", async (req, res) => {
+  router.get("/folder-message", async (req, res) => {
     try {
       const messenger = getActiveMessenger();
       if (!messenger) {
@@ -88,10 +93,13 @@ export function createApiRouter(getActiveMessenger: () => Messenger | null): Rou
         res.status(400).json({ error: "Messenger does not support folder messages" });
         return;
       }
-      const message = await messenger.getFolderMessage(
-        decodeURIComponent(req.params.folderId),
-        decodeURIComponent(req.params.messageId),
-      );
+      const folderId = req.query.folderId as string;
+      const messageId = req.query.messageId as string;
+      if (!folderId || !messageId) {
+        res.status(400).json({ error: "Missing folderId or messageId" });
+        return;
+      }
+      const message = await messenger.getFolderMessage(folderId, messageId);
       res.json(message);
     } catch (err) {
       console.error("Error fetching folder message:", err);

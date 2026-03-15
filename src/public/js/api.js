@@ -45,19 +45,15 @@ export async function fetchFolders() {
 }
 
 export async function fetchFolderMessages(folderId, limit = 10) {
-  const resp = await fetchWithTimeout(
-    `/api/folders/${encodeURIComponent(folderId)}/messages?limit=${limit}`,
-    15000,
-  );
+  const params = new URLSearchParams({ folderId, limit: String(limit) });
+  const resp = await fetchWithTimeout(`/api/folder-messages?${params}`, 15000);
   if (!resp.ok) throw new Error("Failed to fetch folder messages");
   return await resp.json();
 }
 
 export async function fetchFolderMessage(folderId, messageId) {
-  const resp = await fetchWithTimeout(
-    `/api/folders/${encodeURIComponent(folderId)}/messages/${encodeURIComponent(messageId)}`,
-    15000,
-  );
+  const params = new URLSearchParams({ folderId, messageId });
+  const resp = await fetchWithTimeout(`/api/folder-message?${params}`, 15000);
   if (!resp.ok) throw new Error("Failed to fetch message");
   return await resp.json();
 }

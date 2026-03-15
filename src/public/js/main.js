@@ -189,7 +189,7 @@ async function init() {
       // Scroll (1 or 2)
       else if (eventType === 1 || eventType === 2) {
         if (S.appState === "messengerSelect" && S.availableMessengers.length > 1) {
-          S.messengerSelectIndex = eventType === 1
+          S.messengerSelectIndex = eventType === 2
             ? Math.min(S.messengerSelectIndex + 1, S.availableMessengers.length - 1)
             : Math.max(S.messengerSelectIndex - 1, 0);
           updateGlassesMessengerSelection();
