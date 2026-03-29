@@ -1,69 +1,61 @@
 ---
 name: design-system
 description: >
-  Even Bridge UI design system. Use when building or styling React components,
-  working with Tailwind CSS classes, color tokens, typography, spacing,
-  or any frontend UI work.
+  Even Bridge UI design system based on even-toolkit design tokens.
+  Use when building or styling UI components, working with CSS custom properties,
+  color tokens, typography, spacing, or any frontend UI work.
 ---
 
 # Even Bridge — UI Design System Reference
 
-This document defines the UI rules, tokens, and patterns for this project. All components must follow these guidelines. The design system is based on the Even Realities UI library.
+Design tokens sourced from **even-toolkit** (`even-toolkit/web/theme-light.css`). The project uses vanilla CSS custom properties — no React, no Tailwind.
 
-## Framework & Tooling
+---
 
-- **React 19** functional components
-- **Tailwind CSS** for all styling (utility-first, no CSS modules, no CSS-in-JS)
-- **clsx + tailwind-merge** via a `cn()` utility for className composition
-- Every component accepts a `className` prop merged through `cn()`
-- All interactive components use `React.forwardRef`
+## Token Mapping
 
-## Theme
+The project's CSS variables (defined in `src/public/index.html` `:root`) map to even-toolkit tokens:
 
-Light theme only. No dark mode. No `prefers-color-scheme` media query.
+### Text Colors
 
-## Color Tokens
+| Project Var          | even-toolkit Var          | Value     | Usage                    |
+| -------------------- | ------------------------- | --------- | ------------------------ |
+| `--tc-highlight`     | `--color-text-highlight`  | `#ffffff` | Text on dark backgrounds |
+| `--tc-highlight-pressed` | —                     | `#e6e6e6` | Pressed state on dark bg |
+| `--tc-1`             | `--color-text`            | `#232323` | Primary text             |
+| `--tc-2`             | `--color-text-dim`        | `#7b7b7b` | Secondary/muted text     |
+| `--tc-accent`        | `--color-accent`          | `#232323` | Accent text              |
+| `--tc-red`           | `--color-negative`        | `#ff453a` | Error/destructive        |
+| `--tc-red-muted`     | —                         | `#ff8f87` | Muted error              |
+| `--tc-green`         | `--color-positive`        | `#4bb956` | Success                  |
 
-All colors are CSS custom properties mapped to Tailwind classes. Never hardcode raw hex values — always use the token.
+### Background Colors
 
-### Text Colors (`tc-`)
+| Project Var          | even-toolkit Var          | Value     | Usage                    |
+| -------------------- | ------------------------- | --------- | ------------------------ |
+| `--bc-highlight`     | `--color-accent`          | `#232323` | Primary buttons, emphasis|
+| `--bc-1`             | `--color-surface`         | `#ffffff` | Card/surface background  |
+| `--bc-2`             | `--color-surface-light`   | `#f6f6f6` | Subtle background        |
+| `--bc-3`             | `--color-bg`              | `#eeeeee` | Page background          |
+| `--bc-4`             | `--color-border`          | `#e4e4e4` | Borders, dividers        |
+| `--bc-accent`        | `--color-accent-warning`  | `#fef991` | Accent buttons           |
+| `--bc-accent-pressed`| —                         | `#f2e47a` | Accent pressed state     |
+| `--bc-accent-muted`  | —                         | `#fff7c2` | Subtle accent background |
 
-| Token              | Value     | Tailwind Class            | Usage                      |
-| ------------------- | --------- | ------------------------- | -------------------------- |
-| `tc-highlight`      | `#ffffff` | `text-tc-highlight`       | Text on dark backgrounds   |
-| `tc-highlight-pressed` | `#e6e6e6` | `text-tc-highlight-pressed` | Pressed state on dark bg |
-| `tc-1`              | `#232323` | `text-tc-1`               | Primary text               |
-| `tc-2`              | `#7b7b7b` | `text-tc-2`               | Secondary/muted text       |
-| `tc-accent`         | `#232323` | `text-tc-accent`          | Accent text                |
-| `tc-red`            | `#ff453a` | `text-tc-red`             | Error/destructive text     |
-| `tc-red-muted`      | `#ff8f87` | `text-tc-red-muted`       | Muted error text           |
-| `tc-green`          | `#4bb956` | `text-tc-green`           | Success text               |
+### Shaded Colors
 
-### Background Colors (`bc-`)
+| Project Var | even-toolkit Var       | Value                    | Usage         |
+| ----------- | ---------------------- | ------------------------ | ------------- |
+| `--sc-1`    | `--color-overlay`      | `rgba(0, 0, 0, 0.5)`    | Overlay/scrim |
+| `--sc-2`    | `--color-accent-alpha` | `rgba(35, 35, 35, 0.08)` | Subtle shadow |
 
-| Token               | Value                  | Tailwind Class          | Usage                        |
-| -------------------- | ---------------------- | ----------------------- | ---------------------------- |
-| `bc-highlight`       | `#232323`              | `bg-bc-highlight`       | Primary buttons, emphasis    |
-| `bc-1`               | `#ffffff`              | `bg-bc-1`               | Card/surface background      |
-| `bc-2`               | `#f6f6f6`              | `bg-bc-2`               | Subtle background            |
-| `bc-3`               | `#eeeeee`              | `bg-bc-3`               | Page background, dividers    |
-| `bc-4`               | `#e4e4e4`              | `bg-bc-4`               | Borders, heavier dividers    |
-| `bc-accent`          | `#fef991`              | `bg-bc-accent`          | Accent buttons               |
-| `bc-accent-pressed`  | `#f2e47a`              | `bg-bc-accent-pressed`  | Accent pressed state         |
-| `bc-accent-muted`    | `#fff7c2`              | `bg-bc-accent-muted`    | Subtle accent background     |
-
-### Shaded Colors (`sc-`)
-
-| Token  | Value                  | Usage            |
-| ------ | ---------------------- | ---------------- |
-| `sc-1` | `rgba(0, 0, 0, 0.5)`  | Overlay/scrim    |
-| `sc-2` | `rgba(35, 35, 35, 0.08)` | Subtle shadow |
+---
 
 ## Typography
 
 ### Font
 
-- **Family**: `"FK Grotesk Neue"`, falling back to `-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`
+- **Family**: `"FK Grotesk Neue"`, `-apple-system`, `BlinkMacSystemFont`, `"Segoe UI"`, `sans-serif`
 - **CSS variable**: `--font-family-sans`
 - **Letter spacing**: `-0.03em` on all text
 - **Line height**: `normal`
@@ -72,150 +64,170 @@ All colors are CSS custom properties mapped to Tailwind classes. Never hardcode 
 
 Titles use weight **400** (regular). Body text uses weight **300** (light).
 
-| Tailwind Class       | Size  | Weight | Usage              |
-| -------------------- | ----- | ------ | ------------------ |
-| `text-app-title-xl`  | 24px  | 400    | Extra large titles |
-| `text-app-title-lg`  | 20px  | 400    | Large titles       |
-| `text-app-title-1`   | 17px  | 400    | Primary titles     |
-| `text-app-body-1`    | 17px  | 300    | Primary body text  |
-| `text-app-title-2`   | 15px  | 400    | Secondary titles   |
-| `text-app-body-2`    | 15px  | 300    | Secondary body     |
-| `text-app-subtitle`  | 13px  | 400    | Subtitles          |
-| `text-app-detail`    | 11px  | 400    | Fine print         |
+| even-toolkit Class     | Size | Weight | Usage              |
+| ---------------------- | ---- | ------ | ------------------ |
+| `.text-vlarge-title`   | 24px | 400    | Extra large titles |
+| `.text-large-title`    | 20px | 400    | Large titles       |
+| `.text-medium-title`   | 17px | 400    | Primary titles     |
+| `.text-medium-body`    | 17px | 300    | Primary body text  |
+| `.text-normal-title`   | 15px | 400    | Secondary titles   |
+| `.text-normal-body`    | 15px | 300    | Secondary body     |
+| `.text-subtitle`       | 13px | 400    | Subtitles, labels  |
+| `.text-detail`         | 11px | 400    | Fine print         |
+
+Letter spacing per size: `-0.72px` (24), `-0.6px` (20), `-0.17px` (17), `-0.15px` (15), `-0.13px` (13), `-0.11px` (11).
+
+---
 
 ## Spacing
 
-Custom spacing scale mapped to CSS variables. Use these as Tailwind spacing values (e.g. `p-16`, `gap-12`, `mt-24`).
-
-| Token | Value |
-| ----- | ----- |
-| `0`   | 0px   |
-| `8`   | 8px   |
-| `12`  | 12px  |
-| `16`  | 16px  |
-| `20`  | 20px  |
-| `24`  | 24px  |
-| `28`  | 28px  |
-| `32`  | 32px  |
-
-### Layout Spacing
-
-| Token            | Value | Usage                |
+| Var              | Value | Usage                |
 | ---------------- | ----- | -------------------- |
-| `layout-page`    | 12px  | Page padding         |
-| `layout-section` | 8px   | Gap between sections |
-| `layout-card`    | 16px  | Card margin          |
+| `--spacing-8`    | 8px   | Tight gaps           |
+| `--spacing-12`   | 12px  | Default gaps         |
+| `--spacing-16`   | 16px  | Card padding         |
+| `--spacing-20`   | 20px  | Section margins      |
+| `--spacing-24`   | 24px  | Large section gaps   |
+
+### Layout
+
+| Var                | even-toolkit Var          | Value | Usage          |
+| ------------------ | ------------------------- | ----- | -------------- |
+| `--layout-page`    | `--spacing-margin`        | 12px  | Page padding   |
+| `--layout-section` | `--spacing-same`          | 8px → 6px | Section gaps |
+| `--layout-card`    | `--spacing-card-margin`   | 16px  | Card margin    |
+
+**Note:** even-toolkit uses `--spacing-same: 6px` and `--spacing-cross: 12px` where we use a flat 8px `--layout-section`. Keep our value for consistency.
+
+---
 
 ## Borders & Radius
 
-| Token        | Value | Tailwind        |
-| ------------ | ----- | --------------- |
-| Border 1     | 1px   | `border` / `border-1` |
-| Border 2     | 2px   | `border-2`      |
-| Radius small | 6px   | `rounded-sm`    |
-| Radius medium| 6px   | `rounded-md`    |
+| Property      | Value | Notes                        |
+| ------------- | ----- | ---------------------------- |
+| Border width  | 1px   | Default for cards, inputs    |
+| Border color  | `--bc-4` (`#e4e4e4`)        |                |
+| Border radius | 6px   | `--radius` / `--radius-default` |
 
-Shadows are `none`.
+No shadows. `box-shadow: none` everywhere.
+
+---
+
+## Theme
+
+**Light theme only.** No dark mode. No `prefers-color-scheme` media query.
+
+even-toolkit provides a dark theme (`even-toolkit/web/theme-dark.css`) but we do not use it.
+
+---
 
 ## Component Patterns
 
-### Button
+All components are vanilla HTML + CSS. No framework.
 
-Four variants, three sizes.
+### Buttons
 
-**Variants:**
+| Variant   | Background         | Text               | Pressed              |
+| --------- | ------------------ | ------------------ | -------------------- |
+| primary   | `--bc-highlight`   | `--tc-highlight`   | `--tc-1`             |
+| default   | `--bc-1`           | `--tc-1`           | `--bc-3`             |
+| accent    | `--bc-accent`      | `--tc-accent`      | `--bc-accent-pressed`|
+| negative  | `--bc-1`           | `--tc-red`         | `--bc-3`             |
 
-| Variant    | Background        | Text              | Pressed                |
-| ---------- | ----------------- | ----------------- | ---------------------- |
-| `default`  | `bg-bc-1` (white) | `text-tc-1`       | `bg-bc-3`              |
-| `accent`   | `bg-bc-accent`    | `text-tc-1`       | `bg-bc-accent-pressed` |
-| `primary`  | `bg-bc-highlight` | `text-tc-highlight` | —                    |
-| `negative` | `bg-bc-1`         | `text-tc-red`     | —                      |
+Standard button: `padding: var(--spacing-12) var(--spacing-16)`, `border-radius: var(--radius)`, `font-size: 17px`, `font-weight: 400`.
 
-**Sizes:**
+All buttons use `type="button"` to prevent accidental form submission.
 
-| Size | Height | Horizontal padding |
-| ---- | ------ | ------------------ |
-| `sm` | 28px   | 12px               |
-| `md` | 32px   | 16px               |
-| `lg` | 40px   | 20px               |
+### Cards
 
-### IconButton
-
-Same variant and size system as Button, but square (equal width and height).
-
-### Card
-
-- `rounded-md`, `border-bc-4`, `bg-bc-1`, `shadow-1`
-- **CardHeader / CardFooter**: separated by `border-b` / `border-t` with `border-bc-3`
-- **CardContent**: `px-16 py-12`
-
-### Form Controls (Input, Textarea, Select)
-
-- Height: 32px (`min-h-32` for Textarea)
-- `rounded-sm`, `border-bc-4`, `bg-bc-1`
-- Placeholder color: `text-tc-2`
-- Focus: `focus-visible:ring-2 ring-bc-highlight ring-offset-2 ring-offset-bc-1`
-
-### Checkbox & Radio
-
-- Size: 16x16
-- `rounded-sm` (Checkbox), `rounded-full` (Radio)
-- Accent: `accent-bc-highlight`
-- Label: `text-app-body-2`, description: `text-app-detail text-tc-2`
-
-### Switch
-
-- Track: 32x20, `rounded-full`
-- Unchecked: `bg-bc-3`, checked: `bg-bc-highlight`
-- Thumb: 16x16, `rounded-full`, `bg-bc-1`, translates 12px right when checked
-
-### Chip
-
-| Size | Padding      | Text class         |
-| ---- | ------------ | ------------------ |
-| `sm` | `px-12 py-4` | `text-app-detail`  |
-| `lg` | `px-16 py-8` | `text-app-body-2`  |
-
-- `rounded-sm`, `border-bc-3`, `bg-bc-2`
-
-### Badge
-
-- `rounded-sm`, `border-bc-3`, `bg-bc-2`, `text-app-detail`
-
-### Text
-
-Polymorphic component (`as` prop, defaults to `<span>`). Pass `variant` to select the type scale class. Default color: `text-tc-1`.
-
-### Divider
-
-`<hr>` with `border-bc-3`.
-
-## Interaction States
-
-### Focus
-
-All focusable elements:
-```
-focus-visible:outline-none
-focus-visible:ring-2
-focus-visible:ring-bc-highlight
-focus-visible:ring-offset-2
-focus-visible:ring-offset-bc-1
+```css
+background: var(--bc-1);
+border: 1px solid var(--bc-4);
+border-radius: var(--radius);
 ```
 
-### Disabled
+Content padding: `var(--spacing-12) var(--spacing-16)`.
 
-- Buttons: `disabled:pointer-events-none`
-- Form controls: `disabled:cursor-not-allowed disabled:opacity-50`
-- Text in disabled state: `disabled:text-tc-2`
+### Form Controls (Input)
 
-## Body Defaults
+```css
+padding: var(--spacing-8) var(--spacing-12);
+border: 1px solid var(--bc-4);
+border-radius: var(--radius);
+background: var(--bc-2);
+font-size: 15px;
+font-weight: 300;
+```
+
+Focus: `border-color: var(--bc-highlight)`.
+
+### List Items (clickable rows)
+
+```css
+display: flex;
+align-items: center;
+width: 100%;
+padding: var(--spacing-12) var(--spacing-16);
+margin-bottom: var(--layout-section);
+border: 1px solid var(--bc-4);
+border-radius: var(--radius);
+background: var(--bc-1);
+font-size: 17px;
+font-weight: 300;
+```
+
+Active: `background: var(--bc-3)`.
+
+### Status Indicators
+
+- Success: `color: var(--tc-green)`
+- Error: `color: var(--tc-red)`
+- Muted: `color: var(--tc-2)`
+
+### Chat Bubbles
+
+- Outgoing: `background: var(--bc-accent-muted)`, `border-color: var(--bc-accent-pressed)`, right-aligned
+- Incoming: `background: var(--bc-1)`, left-aligned
+- Sender/time: `font-size: 11px`, `color: var(--tc-2)`
+
+---
+
+## Page Layout
 
 ```css
 body {
   font-family: var(--font-family-sans);
-  background-color: var(--color-bc-3); /* #eeeeee */
-  padding: var(--layout-page-padding);  /* 12px */
+  background: var(--bc-3);
+  color: var(--tc-1);
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--layout-page);
+  letter-spacing: -0.03em;
+  line-height: normal;
 }
 ```
+
+---
+
+## Utilities from even-toolkit
+
+Available via `even-toolkit/web/utilities.css`:
+
+- `.scrollbar-hide` — hides scrollbars cross-browser
+- `.animate-pulse-dot` — pulsing status dot animation
+- `.timer-ring-circle` — smooth SVG ring transition
+- `@keyframes slideUp/slideDown` — bottom sheet animations
+- `@keyframes fadeIn/fadeOut` — overlay transitions
+
+---
+
+## Rules
+
+1. **Never hardcode colors or spacing** — always use CSS custom properties
+2. **No dark mode** — light theme only
+3. **No shadows** — `box-shadow: none`
+4. **Border radius is always 6px** (`var(--radius)`)
+5. **Typography hierarchy**: titles at weight 400, body at weight 300
+6. **Icons inherit text color** via `fill="currentColor"`, sized 12/16/20px
+7. **Disabled buttons**: `opacity: 0.5`, `cursor: not-allowed`, `pointer-events: none`
+8. **Page background**: `--bc-3`, section gaps: `--layout-section` (8px)

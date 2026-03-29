@@ -1,8 +1,7 @@
 import { log, setStatus } from "./utils.js";
-import { fetchAvailableMessengers, fetchContacts, fetchLastRecipient, fetchMessages, loadMessengerIcons, fetchFolders, fetchFolderMessages, fetchFolderMessage, fetchSettingsStatus } from "./api.js";
+import { fetchAvailableMessengers, fetchContacts, fetchLastRecipient, fetchMessages, fetchFolders, fetchFolderMessages, fetchFolderMessage, fetchSettingsStatus } from "./api.js";
 import { showBrowserMessengerList, hideBrowserMessengerList, showBrowserContacts, hideBrowserContacts, showBrowserConversation, hideBrowserConversation, showBrowserPreview, hideBrowserPreview, updateAppTitle, updateRecordButton, showBrowserFolderList, hideBrowserFolderList, showBrowserMessageList, hideBrowserMessageList, showBrowserMessageView, hideBrowserMessageView, showBrowserSettings, hideBrowserSettings } from "./ui/browser.js";
 import { showGlassesMessengerSelect, showGlassesContactList, showGlassesConversation, showGlassesPreview, rebuildGlassesDisplay, showGlassesFolderList, showGlassesMessageList, showGlassesMessageView } from "./ui/glasses.js";
-import { saveMessage, renderHistory } from "./history.js";
 
 // --- Messenger session factories ---
 // Each messenger type gets its own session shape.
@@ -41,7 +40,6 @@ export const S = {
   appState: "startup",
   pendingText: "",
   logoData: null,
-  messengerIconData: {},
   startupShown: false,
   conversationPollTimer: null,
   wakeLock: null,
@@ -62,7 +60,7 @@ export const S = {
   // Shape depends on messenger type — see createChatSession / createFolderSession
   session: null,
 
-  BUILD_VERSION: "v1.3.4",
+  BUILD_VERSION: "v1.4.0",
 };
 
 // --- Wake lock ---
@@ -188,7 +186,6 @@ export async function goToMessengerSelect() {
 
   try {
     S.availableMessengers = await fetchAvailableMessengers();
-    S.messengerIconData = await loadMessengerIcons(S.availableMessengers);
     log(`Available messengers: ${S.availableMessengers.join(", ")}`);
   } catch (e) {
     log("Error loading messengers: " + e.message);
@@ -560,15 +557,11 @@ export function handleServerMessage(msg) {
   } else if (msg.type === "sent") {
     if (S.session?.type === "folder" && S.session.selectedMessage) {
       const senderName = S.session.selectedMessage.from || "Unknown";
-      saveMessage(msg.text, senderName);
-      renderHistory();
       log(`Reply sent to ${senderName}: ${msg.text}`);
       S.pendingText = "";
       goToMessageView(S.session.selectedMessage);
     } else {
       const contactName = S.session?.selectedContact?.name || "Unknown";
-      saveMessage(msg.text, contactName);
-      renderHistory();
       log(`Sent to ${contactName}: ${msg.text}`);
       S.pendingText = "";
       refreshConversation();

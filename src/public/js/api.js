@@ -130,19 +130,3 @@ export async function fetchTelegramAuthState() {
   return await resp.json();
 }
 
-export async function loadMessengerIcons(names) {
-  const iconFiles = { telegram: "telegram-icon-data.json", slack: "slack-icon-data.json" };
-  const result = {};
-  for (const name of names) {
-    const file = iconFiles[name];
-    if (!file) continue;
-    try {
-      const resp = await fetch(`/${file}`);
-      result[name] = await resp.json();
-      log(`Icon loaded for ${name}`);
-    } catch (e) {
-      log(`Icon load failed for ${name}: ${e.message}`);
-    }
-  }
-  return result;
-}

@@ -39,16 +39,3 @@ export function sanitizeG2Name(name) {
   if (clean.length > 55) clean = clean.slice(0, 55);
   return clean;
 }
-
-export function renderIconToCanvas(canvas, iconData) {
-  const bytes = new Uint8Array(iconData.data);
-  const blob = new Blob([bytes], { type: "image/png" });
-  const url = URL.createObjectURL(blob);
-  const img = new Image();
-  img.onload = () => {
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, 24, 24);
-    URL.revokeObjectURL(url);
-  };
-  img.src = url;
-}

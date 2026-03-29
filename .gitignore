@@ -7,4 +7,5 @@ last-recipient*.json
 .claude/settings.local.json
 .claude/plans/
 qr.png
+*.ehpk
 settings.json

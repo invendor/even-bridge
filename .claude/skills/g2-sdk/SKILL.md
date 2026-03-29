@@ -1,14 +1,14 @@
 ---
 name: g2-sdk
 description: >
-  Even Realities G2 smart glasses SDK reference. Use when building or modifying
-  G2 glasses features, display layouts, event handling, audio recording,
+  Even Realities G2 smart glasses SDK v0.0.9 reference. Use when building or modifying
+  G2 glasses features, display layouts, event handling, audio recording, IMU,
   container management, or anything related to the glasses hardware and firmware.
 ---
 
-# Even Realities G2 – AI Agent Development Reference
+# Even Realities G2 – SDK v0.0.9 Reference
 
-> Use this document when building or modifying apps for the Even G2 smart glasses. It contains all SDK APIs, hardware constraints, display rules, event handling, audio format details, and known quirks needed to write correct G2 code.
+> Complete SDK API reference for the Even G2 smart glasses. Covers all APIs, hardware constraints, display rules, event handling, audio, IMU, and known quirks.
 
 ---
 
@@ -16,7 +16,7 @@ description: >
 
 - Dual micro-LED displays (green), 576x288 px per eye, 4-bit greyscale (16 shades)
 - BLE 5.x (~28m range), paired via iPhone or Android (Even App)
-- Microphone (SDK accessible), no camera, no speaker
+- Microphone (SDK accessible), IMU (SDK accessible), no camera, no speaker
 - R1 control ring for scroll/click input
 - Touch gestures on temple tips
 
@@ -34,7 +34,7 @@ description: >
 ## SDK Setup
 
 ```bash
-npm install @evenrealities/even_hub_sdk
+npm install @evenrealities/even_hub_sdk@^0.0.9
 ```
 
 ```typescript
@@ -59,7 +59,7 @@ const bridge = EvenAppBridge.getInstance()
 
 ### Container Rules
 
-- Max **4 containers per page** (mixed types allowed)
+- Max **12 containers per page** — up to **8 text** + up to **4 image**
 - Exactly **one** container must have `isEventCapture: 1`
 - Containers positioned absolutely with pixel coordinates
 - No CSS, no flexbox, no DOM — firmware renders directly
@@ -71,14 +71,14 @@ const bridge = EvenAppBridge.getInstance()
 |---|---|---|---|
 | `xPosition` | number | 0–576 | Left edge px |
 | `yPosition` | number | 0–288 | Top edge px |
-| `width` | number | 0–576 | (20–200 for images) |
-| `height` | number | 0–288 | (20–100 for images) |
+| `width` | number | 0–576 | (20–288 for images) |
+| `height` | number | 0–288 | (20–144 for images) |
 | `containerID` | number | any | Unique per page |
 | `containerName` | string | max 16 chars | Unique per page |
 | `isEventCapture` | number | 0 or 1 | Exactly one must be 1 |
 | `borderWidth` | number | 0–5 | 0 = no border |
 | `borderColor` | number | 0–15 (list), 0–16 (text) | Greyscale level |
-| `borderRdaius` | number | 0–10 | Note: typo preserved from SDK protobuf |
+| `borderRadius` | number | 0–10 | Fixed spelling in v0.0.9 (was `borderRdaius`) |
 | `paddingLength` | number | 0–32 | Uniform padding all sides |
 
 ### Text Containers (`TextContainerProperty`)
@@ -88,7 +88,7 @@ Plain text, left-aligned, top-aligned. No font size, bold, italic, or alignment 
 ```typescript
 new TextContainerProperty({
   xPosition: 0, yPosition: 0, width: 576, height: 288,
-  borderWidth: 0, borderColor: 5, paddingLength: 4,
+  borderWidth: 0, borderColor: 5, borderRadius: 0, paddingLength: 4,
   containerID: 1, containerName: 'main-text',
   content: 'Hello from G2',
   isEventCapture: 1,
@@ -126,7 +126,7 @@ Native scrollable list — firmware handles scroll highlighting.
 ```typescript
 new ListContainerProperty({
   xPosition: 0, yPosition: 0, width: 576, height: 288,
-  borderWidth: 1, borderColor: 13, borderRdaius: 6, paddingLength: 5,
+  borderWidth: 1, borderColor: 13, borderRadius: 6, paddingLength: 5,
   containerID: 1, containerName: 'my-list',
   isEventCapture: 1,
   itemContainer: new ListItemContainerProperty({
@@ -158,8 +158,8 @@ new ImageContainerProperty({
 
 | Constraint | Value |
 |---|---|
-| Width | 20–200 px |
-| Height | 20–100 px |
+| Width | 20–288 px |
+| Height | 20–144 px |
 | Colour | 4-bit greyscale |
 | Data formats | `number[]`, `Uint8Array`, `ArrayBuffer`, base64 string |
 | Concurrent sends | **Not allowed** — queue sequentially |
@@ -181,6 +181,21 @@ new ImageContainerProperty({
 | `FOREGROUND_ENTER_EVENT` | 4 | App comes to foreground |
 | `FOREGROUND_EXIT_EVENT` | 5 | App goes to background |
 | `ABNORMAL_EXIT_EVENT` | 6 | Unexpected disconnect |
+| `SYSTEM_EXIT_EVENT` | 7 | System-initiated exit |
+| `IMU_DATA_REPORT` | 8 | IMU data push (v0.0.9+) |
+
+### Event Source (`EventSourceType`) — v0.0.9+
+
+Distinguishes which hardware triggered the event.
+
+| Source | Value |
+|---|---|
+| `TOUCH_EVENT_FORM_DUMMY_NULL` | 0 |
+| `TOUCH_EVENT_FROM_GLASSES_R` | 1 |
+| `TOUCH_EVENT_FROM_RING` | 2 |
+| `TOUCH_EVENT_FROM_GLASSES_L` | 3 |
+
+Available on `sysEvent.eventSource`.
 
 ### Event Delivery
 
@@ -188,7 +203,7 @@ new ImageContainerProperty({
 bridge.onEvenHubEvent((event: EvenHubEvent) => {
   // event.listEvent  — from list containers
   // event.textEvent  — from text containers
-  // event.sysEvent   — system-level events
+  // event.sysEvent   — system-level events (+ IMU data, event source)
   // event.audioEvent — microphone PCM data
   // event.jsonData   — raw payload for debugging
 })
@@ -196,7 +211,7 @@ bridge.onEvenHubEvent((event: EvenHubEvent) => {
 
 **List event fields:** `containerID`, `containerName`, `currentSelectItemName`, `currentSelectItemIndex`, `eventType`
 **Text event fields:** `containerID`, `containerName`, `eventType`
-**System event fields:** `eventType` only
+**System event fields:** `eventType`, `eventSource` (v0.0.9+), `imuData` (v0.0.9+), `systemExitReasonCode`
 
 ### Critical Event Quirks
 
@@ -223,8 +238,9 @@ Call **exactly once** at startup. Returns `StartUpPageCreateResult` (0=success, 
 
 ```typescript
 await bridge.createStartUpPageContainer(new CreateStartUpPageContainer({
-  containerTotalNum: 1,
-  textObject: [textContainer],
+  containerTotalNum: 3,       // 1–12
+  textObject: [textContainer], // max 8
+  imageObject: [imgContainer], // max 4
 }))
 ```
 
@@ -246,6 +262,14 @@ In-place text update. Faster, no flicker. Returns `boolean`.
 ### `updateImageRawData`
 
 Update image container data. Must be called after page creation. Returns `ImageRawDataUpdateResult`. **No concurrent sends.**
+
+```typescript
+await bridge.updateImageRawData(new ImageRawDataUpdate({
+  containerID: 3,
+  containerName: 'logo',
+  imageData: pngBytes, // number[] | Uint8Array | ArrayBuffer | base64 string
+}))
+```
 
 ### `shutDownPageContainer`
 
@@ -285,20 +309,79 @@ bridge.onEvenHubEvent((event) => {
 
 ---
 
+## IMU (v0.0.9+)
+
+Control the IMU hardware and receive real-time motion data (accelerometer/gyroscope).
+
+```typescript
+import { ImuReportPace } from '@evenrealities/even_hub_sdk'
+
+// Enable IMU at 100ms intervals (default)
+await bridge.imuControl(true)
+
+// Enable at custom frequency (100–1000ms, step 100)
+await bridge.imuControl(true, ImuReportPace.P200)
+
+// Disable IMU
+await bridge.imuControl(false)
+```
+
+**ImuReportPace values:** `P100` (100ms), `P200`, `P300`, `P400`, `P500`, `P600`, `P700`, `P800`, `P900`, `P1000` (1000ms)
+
+**Receiving IMU data:**
+
+```typescript
+bridge.onEvenHubEvent((event) => {
+  if (event.sysEvent?.eventType === 8 && event.sysEvent.imuData) {
+    const { x, y, z } = event.sysEvent.imuData
+    // x, y, z: double precision motion data
+  }
+})
+```
+
+IMU data arrives via `sysEvent` with `eventType: IMU_DATA_REPORT (8)` and `imuData: { x, y, z }`.
+
+---
+
+## Launch Source (v0.0.9+)
+
+Detect whether the app was launched from the App Menu or the Glasses Menu.
+
+```typescript
+import { LAUNCH_SOURCE_APP_MENU, LAUNCH_SOURCE_GLASSES_MENU } from '@evenrealities/even_hub_sdk'
+
+const unsub = bridge.onLaunchSource((source) => {
+  // source: 'appMenu' | 'glassesMenu'
+  if (source === LAUNCH_SOURCE_GLASSES_MENU) {
+    // Launched from glasses — show minimal UI
+  }
+})
+```
+
+**Type:** `LaunchSource = 'appMenu' | 'glassesMenu'`
+**Constants:** `LAUNCH_SOURCE_APP_MENU`, `LAUNCH_SOURCE_GLASSES_MENU`
+**Note:** Fired once by SDK after page load (not on refresh). Returns unsubscribe function.
+
+---
+
 ## Device Info
 
 ```typescript
 const device = await bridge.getDeviceInfo()
 // device.model — DeviceModel.G1 | DeviceModel.G2 | DeviceModel.Ring1
-// device.sn — serial number
+// device.sn — serial number (readonly)
 // device.status.batteryLevel — 0-100
 // device.status.isWearing — boolean
 // device.status.isCharging — boolean
+// device.status.isInCase — boolean
 // device.status.connectType — DeviceConnectType
+// device.isGlasses() / device.isRing()
 
-// Real-time monitoring
+// Real-time monitoring (returns unsubscribe function)
 const unsub = bridge.onDeviceStatusChanged((status) => { ... })
 ```
+
+**DeviceConnectType:** `None`, `Connecting`, `Connected`, `Disconnected`, `ConnectionFailed`
 
 ## User Info
 
@@ -330,6 +413,36 @@ const value = await bridge.getLocalStorage('key') // returns string
 
 ---
 
+## Complete Export List (v0.0.9)
+
+**Enums:** `BridgeEvent`, `DeviceConnectType`, `DeviceModel`, `EvenAppMethod`, `EvenAppMessageType`, `EvenHubErrorCodeName`, `EvenHubEventType`, `EventSourceType`, `ImageRawDataUpdateResult`, `ImuReportPace`, `OsEventTypeList`, `StartUpPageCreateResult`
+
+**Classes:** `CreateStartUpPageContainer`, `DeviceInfo`, `DeviceStatus`, `EvenAppBridge`, `ImageContainerProperty`, `ImageRawDataUpdate`, `ImageRawDataUpdateFields`, `ImuCtrlCmd`, `ImuCtrlCmdResponse`, `IMU_Report_Data`, `ListContainerProperty`, `ListItemContainerProperty`, `List_ItemEvent`, `RebuildPageContainer`, `ShutDownContaniner`, `TextContainerProperty`, `TextContainerUpgrade`, `Text_ItemEvent`, `UserInfo`, `Sys_ItemEvent`
+
+**Types:** `AudioEventPayload`, `EvenHubErrorCode`, `EvenHubEvent`, `EvenHubEventPayload`, `JsonRecord`, `LaunchSource`
+
+**Constants:** `LAUNCH_SOURCE_APP_MENU`, `LAUNCH_SOURCE_GLASSES_MENU`
+
+**Functions:** `waitForEvenAppBridge`, `bytesToJson`, `createDefaultEvenHubEvent`, `evenHubEventFromJson`, `isObjectRecord`, `normalizeLooseKey`, `pick`, `pickLoose`, `readNumber`, `readString`, `toNumber`, `toObjectRecord`, `toString`
+
+---
+
+## Error Codes
+
+| Context | Code | Meaning |
+|---|---|---|
+| Page create | 0 / `success` | Success |
+| Page create | 1 / `invalid` | Invalid config |
+| Page create | 2 / `oversize` | Oversize |
+| Page create | 3 / `outOfMemory` | Out of memory |
+| Image update | `success` | OK |
+| Image update | `imageException` | Processing error |
+| Image update | `imageSizeInvalid` | Wrong dimensions |
+| Image update | `imageToGray4Failed` | Greyscale conversion failed |
+| Image update | `sendFailed` | BLE send failed |
+
+---
+
 ## UI Patterns
 
 ### Fake Buttons with Text
@@ -348,7 +461,7 @@ const bar = '━'.repeat(n) + '─'.repeat(total - n)
 
 ### Multi-Slot Layout
 
-Multiple text containers as rows (e.g. 3 at `height: 96` = 288px total). Toggle `borderWidth` for selection highlight.
+Multiple text containers as rows (e.g. 3 at `height: 96` = 288px total). Toggle `borderWidth` for selection highlight. With 8 text containers now available, more complex layouts are possible.
 
 ### Event Capture for Image Apps
 
@@ -362,10 +475,10 @@ Pre-paginate into ~400-char pages. Track `pageIndex`, rebuild on scroll boundary
 
 ## Simulator
 
-Install: `npm install -g @evenrealities/evenhub-simulator`
+Install: `npm install -D @evenrealities/evenhub-simulator@^0.6.2`
 
 ```bash
-evenhub-simulator [OPTIONS] [targetUrl]
+npx evenhub-simulator [OPTIONS] [targetUrl]
 ```
 
 | Option | Description |
@@ -375,37 +488,22 @@ evenhub-simulator [OPTIONS] [targetUrl]
 | `--list-audio-input-devices` | List mic devices |
 | `--aid` | Select audio input device |
 
+Simulator v0.6.2 supports: 12-container limit, 288x144 image sizes, IMU data simulation, launch source simulation.
+
 **Simulator caveats:** Font rendering differs, list scrolling varies, image processing is faster, status events may not fire. Always test on real hardware.
 
 ---
 
 ## CLI Tools (`@evenrealities/evenhub-cli`)
 
+See the `evenhub-cli` skill for full CLI reference. Quick commands:
+
 ```bash
-npm install -D @evenrealities/evenhub-cli
+npx evenhub qr --url "https://your-tunnel.ngrok-free.app"  # QR for sideloading
+npx evenhub pack app.json ./dist -o app.ehpk                # Package for distribution
+npx evenhub login                                            # Authenticate
+npx evenhub init                                             # Generate app.json template
 ```
-
-| Command | Description |
-|---|---|
-| `evenhub qr --url "http://IP:PORT"` | QR code for sideloading |
-| `evenhub pack app.json dist` | Package `.ehpk` for distribution |
-| `evenhub login` | Authenticate developer account |
-| `evenhub init` | Generate `app.json` template |
-
----
-
-## Error Codes
-
-| Context | Code | Meaning |
-|---|---|---|
-| Page create | 0 | Success |
-| Page create | 1 | Invalid config |
-| Page create | 2 | Oversize |
-| Page create | 3 | Out of memory |
-| Image update | `imageException` | Processing error |
-| Image update | `imageSizeInvalid` | Wrong dimensions |
-| Image update | `imageToGray4Failed` | Greyscale conversion failed |
-| Image update | `sendFailed` | BLE send failed |
 
 ---
 

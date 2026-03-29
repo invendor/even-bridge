@@ -1,6 +1,5 @@
 import { S } from "./state.js";
 import { initUtils, log, setStatus, getStatusText } from "./utils.js";
-import { initHistory, renderHistory } from "./history.js";
 import { initBrowserUI } from "./ui/browser.js";
 import { connectWebSocket } from "./ws.js";
 import { toggleRecording } from "./recording.js";
@@ -62,7 +61,6 @@ async function init() {
   const conversationViewEl = document.getElementById("conversationView");
   const previewViewEl = document.getElementById("previewView");
   const recordBtn = document.getElementById("recordBtn");
-  const historyEl = document.getElementById("history");
   const logEl = document.getElementById("log");
   const folderListEl = document.getElementById("folderList");
   const messageListEl = document.getElementById("messageList");
@@ -72,7 +70,6 @@ async function init() {
   const settingsBackBtn = document.getElementById("settingsBackBtn");
 
   initUtils({ statusEl, logEl });
-  initHistory(historyEl);
   initBrowserUI({
     messengerListEl,
     contactListEl,
@@ -221,7 +218,6 @@ async function init() {
   }
 
   connectWebSocket();
-  renderHistory();
   requestWakeLock();
 
   goToMessengerSelect();

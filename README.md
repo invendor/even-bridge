@@ -4,7 +4,16 @@ Speech-to-Messenger plugin for Even G2 smart glasses.
 
 Record speech, which gets transcribed via OpenAI Whisper and sent to your messenger chat. Supports **Telegram**, **Slack**, and **Gmail**.
 
-## Screenshots
+![Even Realities](https://img.shields.io/badge/Even_Realities-G2-00cc00)
+![SDK](https://img.shields.io/badge/SDK-v0.0.9-00cc00)
+![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-blue?logo=typescript&logoColor=white)
+![OpenAI](https://img.shields.io/badge/OpenAI-Whisper-412991?logo=openai&logoColor=white)
+![Telegram](https://img.shields.io/badge/Telegram-26A5E4?logo=telegram&logoColor=white)
+![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white)
+![Gmail](https://img.shields.io/badge/Gmail-EA4335?logo=gmail&logoColor=white)
+
+## Screenshots (G2 Display)
 
 <table>
   <tr>
@@ -17,11 +26,27 @@ Record speech, which gets transcribed via OpenAI Whisper and sent to your messen
   </tr>
   <tr>
     <td align="center"><strong>Conversation</strong></td>
-    <td align="center"><strong>Send Preview</strong></td>
+    <td align="center"><strong>Recording</strong></td>
   </tr>
   <tr>
     <td><img src="docs/screenshots/03-conversation.png" width="400" alt="Conversation view"></td>
-    <td><img src="docs/screenshots/04-preview.png" width="400" alt="Message preview screen"></td>
+    <td><img src="docs/screenshots/04-recording.png" width="400" alt="Recording screen"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Send Preview</strong></td>
+    <td align="center"><strong>Gmail Folders</strong></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/05-preview.png" width="400" alt="Message preview screen"></td>
+    <td><img src="docs/screenshots/06-gmail-folders.png" width="400" alt="Gmail folders"></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>Gmail Inbox</strong></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/07-gmail-inbox.png" width="400" alt="Gmail inbox messages"></td>
+    <td></td>
   </tr>
 </table>
 
@@ -135,15 +160,9 @@ npm start         # run compiled output
 ## Project Structure
 
 ```
+app.json                               EvenHub app metadata (for .ehpk packaging)
 docs/
   screenshots/                         G2 display screenshots
-CLAUDE.md                              Project instructions for AI agents
-.claude/
-  rules/
-    code-style.md                      Auto-loaded coding standards
-  skills/
-    g2-sdk/SKILL.md                    G2 glasses SDK reference (auto-triggered)
-    design-system/SKILL.md             UI design tokens & components (auto-triggered)
 src/
   server.ts                            Composition root — HTTP + WebSocket server
   app.ts                               Express app setup and route registration
@@ -170,17 +189,13 @@ src/
       api.js                           HTTP API client functions
       recording.js                     Audio recording (G2 mic + browser fallback)
       ws.js                            WebSocket client
-      history.js                       Message history
       utils.js                         Shared utilities
       ui/
         browser.js                     Browser DOM rendering
         glasses.js                     G2 glasses display rendering
     logo-data.json                     Logo encoded for G2 display
-    telegram-icon-data.json            Telegram icon for G2 display
-    slack-icon-data.json               Slack icon for G2 display
   scripts/
     pngEncoder.ts                      PNG encoder with CRC32/Adler32 checksums
-    generateSlackIcon.ts               Slack icon generator
 ```
 
 ## Tech Stack
@@ -190,4 +205,4 @@ src/
 - **Telegram** — GramJS (Telegram Client API, sends as your user account)
 - **Slack** — @slack/web-api (Slack Web API, sends as your user account)
 - **Gmail** — imapflow (IMAP) + nodemailer (SMTP)
-- **G2 SDK** — `@evenrealities/even_hub_sdk`
+- **G2 SDK** — `@evenrealities/even_hub_sdk` v0.0.9

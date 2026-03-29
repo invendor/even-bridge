@@ -1,5 +1,5 @@
 import { S } from "../state.js";
-import { formatTime, renderIconToCanvas } from "../utils.js";
+import { formatTime } from "../utils.js";
 
 let messengerListEl, contactListEl, conversationViewEl, previewViewEl, recordBtn, appTitleEl;
 let folderListEl, messageListEl, messageViewEl;
@@ -27,21 +27,10 @@ export function showBrowserMessengerList(onSelect) {
   let html = "";
   for (const name of S.availableMessengers) {
     const displayName = name.charAt(0).toUpperCase() + name.slice(1);
-    html += `<button data-name="${name}">
-      <canvas class="messenger-icon" data-icon="${name}" width="24" height="24"></canvas>
-      ${displayName}
-    </button>`;
+    html += `<button data-name="${name}">${displayName}</button>`;
   }
   messengerListEl.innerHTML = html;
   messengerListEl.style.display = "block";
-
-  messengerListEl.querySelectorAll("canvas.messenger-icon").forEach((canvas) => {
-    const iconName = canvas.dataset.icon;
-    const iconData = S.messengerIconData[iconName];
-    if (iconData) {
-      renderIconToCanvas(canvas, iconData);
-    }
-  });
 
   messengerListEl.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => {

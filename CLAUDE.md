@@ -25,7 +25,7 @@ npm start         # run compiled output
 - **Server**: Express + WebSocket (`ws`) — `src/server.ts` (composition root), `src/routes/`, `src/services/`, `src/websocket.ts`
 - **Frontend**: `src/public/index.html` (CSS + HTML shell) + ES modules in `src/public/js/`
 - **Messengers**: Abstracted via `Messenger` interface in `src/messengers/`
-- **G2 SDK**: `@evenrealities/even_hub_sdk` injected as `EvenAppBridge` in the WebView
+- **G2 SDK**: `@evenrealities/even_hub_sdk@0.0.9` injected as `EvenAppBridge` in the WebView
 
 ## Key Conventions
 
@@ -33,7 +33,6 @@ npm start         # run compiled output
 - Messenger abstraction: all messengers implement `Messenger` interface (`src/messengers/types.ts`)
 - Adding a new messenger: create `src/messengers/<name>.ts`, add to factory in `src/messengers/index.ts`
 - G2 display uses container model (text, list, image) — no DOM/CSS on glasses
-- Icons for G2 display are stored as `{width, height, data}` JSON in `src/public/`
 
 ## Environment
 
@@ -45,18 +44,26 @@ Requires at least one messenger configured in Settings:
 - **Slack**: User OAuth Token
 - **Gmail**: Email address + App password
 
+## G2 SDK v0.0.9 Notes
+
+- Max 12 containers per page (up to 8 text + 4 image), exactly one must have `isEventCapture: 1`
+- Image max size: 288x144 px. `updateImageRawData` calls must be sequential (no concurrent sends)
+- `borderRadius` spelling fixed (was `borderRdaius` in older versions)
+- IMU control: `bridge.imuControl(true, ImuReportPace)` — data via `sysEvent.imuData` (x, y, z)
+- Launch source: `bridge.onLaunchSource(cb)` — `'appMenu' | 'glassesMenu'`, fires once on load
+- Event source: `sysEvent.eventSource` distinguishes glasses-R (1), ring (2), glasses-L (3)
+
 ## G2 Gotchas
 
 - `CLICK_EVENT` (0) normalised to `undefined` by SDK — always check `eventType === 0 || eventType === undefined`
 - `currentSelectItemIndex` missing for index 0 in list events — track selection in app state
-- Max 4 containers per page, exactly one must have `isEventCapture: 1`
-- Image `updateImageRawData` calls must be sequential (no concurrent sends)
-- `borderRdaius` (not `borderRadius`) — typo preserved from SDK protobuf
+- Simulator sends `sysEvent` for clicks; real hardware sends `textEvent`/`listEvent` — handle all three
 
 ## Skills
 
 See `.claude/skills/` for detailed domain references:
-- `g2-sdk` — G2 glasses SDK: display, events, audio, containers, simulator
-- `design-system` — UI design tokens, color system, typography, component patterns
+- `g2-sdk` — G2 glasses SDK v0.0.9: display, events, audio, IMU, launch source, containers, simulator
+- `evenhub-cli` — EvenHub CLI: packing .ehpk, app.json config, QR codes, developer auth
+- `design-system` — UI design tokens (even-toolkit), color system, typography, component patterns
 - `qr` — Generate QR code PNG for the Even Bridge ngrok tunnel
 - `express-app` — App architecture: Express server patterns, frontend ES module structure, state management
