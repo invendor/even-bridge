@@ -135,7 +135,7 @@ export async function showGlassesMessengerSelect() {
 
     const listHeight = S.availableMessengers.length * rowHeight;
     const totalHeight = logoH + logoGap + listHeight;
-    const logoY = Math.floor((288 - totalHeight) / 2);
+    const logoY = Math.floor((288 - totalHeight) / 2 * 0.4);
     const selectY = logoY + logoH + logoGap;
 
     const logoX = Math.floor((576 - logoW) / 2);

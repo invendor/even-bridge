@@ -60,7 +60,7 @@ export const S = {
   // Shape depends on messenger type — see createChatSession / createFolderSession
   session: null,
 
-  BUILD_VERSION: "v1.4.0",
+  BUILD_VERSION: "v1.4.1",
 };
 
 // --- Wake lock ---
