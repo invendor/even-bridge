@@ -1,12 +1,12 @@
 ---
 name: design-system
 description: >
-  Even Bridge UI design system based on even-toolkit design tokens.
+  The Bridge UI design system based on even-toolkit design tokens.
   Use when building or styling UI components, working with CSS custom properties,
   color tokens, typography, spacing, or any frontend UI work.
 ---
 
-# Even Bridge — UI Design System Reference
+# The Bridge — UI Design System Reference
 
 Design tokens sourced from **even-toolkit** (`even-toolkit/web/theme-light.css`). The project uses vanilla CSS custom properties — no React, no Tailwind.
 

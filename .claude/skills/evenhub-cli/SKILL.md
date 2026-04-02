@@ -88,7 +88,7 @@ All fields are **required**.
 {
   "package_id": "com.evenbridge.app",
   "edition": "202601",
-  "name": "Even Bridge",
+  "name": "The Bridge",
   "version": "1.3.4",
   "min_app_version": "2.0.0",
   "min_sdk_version": "0.0.9",
@@ -137,7 +137,7 @@ Each permission requires `desc` (1–300 chars) explaining why it's needed.
 
 ---
 
-## Build & Pack Workflow for Even Bridge
+## Build & Pack Workflow for The Bridge
 
 ```bash
 # 1. Build the project

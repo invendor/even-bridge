@@ -1,13 +1,13 @@
 ---
 name: railway
 description: >
-  Railway deployment reference for Even Bridge. Use when deploying, managing
+  Railway deployment reference for The Bridge. Use when deploying, managing
   environments, checking logs, or configuring Railway infrastructure.
 ---
 
 # Railway Deployment Reference
 
-> Deploy Even Bridge to Railway for production. Uses Railpack builder (auto-detects Node.js from package.json). Dev stays on localhost + ngrok.
+> Deploy The Bridge to Railway for production. Uses Railpack builder (auto-detects Node.js from package.json). Dev stays on localhost + ngrok.
 
 ---
 

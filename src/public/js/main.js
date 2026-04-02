@@ -83,7 +83,7 @@ async function init() {
     settingsViewEl,
   });
 
-  log(`Even Bridge ${S.BUILD_VERSION} starting`);
+  log(`The Bridge ${S.BUILD_VERSION} starting`);
 
   // Detect G2 bridge
   try {

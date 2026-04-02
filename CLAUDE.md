@@ -1,4 +1,4 @@
-# Even Bridge
+# The Bridge
 
 Speech-to-messenger plugin for Even Realities G2 smart glasses. Records speech via G2 mic, transcribes with OpenAI Whisper, sends to Telegram, Slack, or Gmail.
 
@@ -65,5 +65,5 @@ See `.claude/skills/` for detailed domain references:
 - `g2-sdk` — G2 glasses SDK v0.0.9: display, events, audio, IMU, launch source, containers, simulator
 - `evenhub-cli` — EvenHub CLI: packing .ehpk, app.json config, QR codes, developer auth
 - `design-system` — UI design tokens (even-toolkit), color system, typography, component patterns
-- `qr` — Generate QR code PNG for the Even Bridge ngrok tunnel
+- `qr` — Generate QR code PNG for the The Bridge ngrok tunnel
 - `express-app` — App architecture: Express server patterns, frontend ES module structure, state management

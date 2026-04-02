@@ -65,7 +65,7 @@ The app uses the G2 web-proxy model: the server hosts a web page, the Even App (
 
 ## How It Works
 
-1. **Tap to start** — glasses display startup screen with the Even Bridge logo.
+1. **Tap to start** — glasses display startup screen with the The Bridge logo.
 2. **Select messenger** — choose between Telegram, Slack, Gmail, or any other configured messenger. Only messengers configured in Settings are shown.
 3. **Select contact** — scroll through your contacts and tap to select who to send the message to. The last contacted person is remembered.
 4. **Double tap to record** — the G2 microphone opens (`bridge.audioControl(true)`) and streams raw PCM audio (16kHz, 16-bit, mono) over WebSocket to the server.

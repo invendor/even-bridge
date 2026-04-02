@@ -60,7 +60,7 @@ export const S = {
   // Shape depends on messenger type — see createChatSession / createFolderSession
   session: null,
 
-  BUILD_VERSION: "v1.4.1",
+  BUILD_VERSION: "v1.4.2",
 };
 
 // --- Wake lock ---
@@ -530,7 +530,7 @@ export function handleServerMessage(msg) {
   if (msg.type === "messenger-selected") {
     const displayName = msg.name;
     log(`Messenger selected: ${displayName}`);
-    updateAppTitle(`Even Bridge → ${displayName}`);
+    updateAppTitle(`The Bridge → ${displayName}`);
     if (msg.hasFolders) {
       goToFolderSelect();
     } else {

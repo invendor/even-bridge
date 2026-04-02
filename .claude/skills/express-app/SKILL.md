@@ -1,15 +1,15 @@
 ---
 name: express-app
 description: >
-  Even Bridge app architecture reference. Use when adding features, refactoring
+  The Bridge app architecture reference. Use when adding features, refactoring
   server or frontend code, creating new routes, services, or UI modules.
   Covers Express server patterns, frontend ES module structure, state management,
   and file organization conventions.
 ---
 
-# Even Bridge — App Architecture Reference
+# The Bridge — App Architecture Reference
 
-This document defines the architecture patterns, module structure, and coding conventions for the Even Bridge application. All new code must follow these guidelines.
+This document defines the architecture patterns, module structure, and coding conventions for the The Bridge application. All new code must follow these guidelines.
 
 ## Server Architecture
 

@@ -1,7 +1,7 @@
 ---
 name: qr
 description: >
-  Generate a QR code PNG for the Even Bridge ngrok tunnel.
+  Generate a QR code PNG for the The Bridge ngrok tunnel.
   Trigger when the user asks to make/generate/update a QR code.
 user_invocable: true
 ---
