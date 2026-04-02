@@ -61,7 +61,7 @@ Required for `--check` flag during pack. Uses the same account as the Even App.
 ### `evenhub pack` — Pack .ehpk
 
 ```bash
-npx evenhub pack app.json ./dist -o even-bridge.ehpk
+npx evenhub pack app.json ./dist -o the-bridge.ehpk
 ```
 
 | Argument/Option | Description |
@@ -86,7 +86,7 @@ All fields are **required**.
 
 ```json
 {
-  "package_id": "com.evenbridge.app",
+  "package_id": "com.thebridge.app",
   "edition": "202601",
   "name": "The Bridge",
   "version": "1.3.4",
@@ -144,7 +144,7 @@ Each permission requires `desc` (1–300 chars) explaining why it's needed.
 npm run build
 
 # 2. Pack into .ehpk
-npx evenhub pack app.json ./dist -o even-bridge.ehpk
+npx evenhub pack app.json ./dist -o the-bridge.ehpk
 
 # 3. (Optional) Check package_id availability
 npx evenhub pack app.json ./dist --check

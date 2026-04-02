@@ -1,4 +1,4 @@
-# even-bridge
+# the-bridge
 
 Speech-to-Messenger plugin for Even G2 smart glasses.
 
